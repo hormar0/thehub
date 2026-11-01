@@ -17,8 +17,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "milestonehub.db")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-GATE_ORDER = ["E-010", "E-020", "E-030", "D-010", "B-010", "T-010", "C-005"]
-
 
 def get_db():
     db = sqlite3.connect(DB_PATH)
@@ -292,6 +290,11 @@ class Handler(BaseHTTPRequestHandler):
                 dels = rows(db.execute("SELECT id, title, owner, gate_id, state, due_date, dependency_ids FROM deliverables ORDER BY due_date"))
                 gates = rows(db.execute("SELECT id, name, scheduled_date, status FROM gates ORDER BY scheduled_date"))
                 return self._send(200, {"deliverables": dels, "gates": gates})
+            if path == "/api/program":
+                phases = rows(db.execute("SELECT * FROM program_phases ORDER BY position"))
+                projects = rows(db.execute("SELECT p.*, ph.name AS phase_name FROM projects p LEFT JOIN program_phases ph ON ph.id = p.program_phase_id ORDER BY p.start_date"))
+                repo = db.execute("SELECT * FROM doc_repo WHERE id=1").fetchone()
+                return self._send(200, {"phases": phases, "projects": projects, "doc_repo": dict(repo) if repo else None})
             self._serve_static(path)
         finally:
             db.close()
@@ -375,6 +378,34 @@ class Handler(BaseHTTPRequestHandler):
                 db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?)", (tid, body.get("deliverable_id"), body.get("owner"), float(body.get("hours", 0)), body.get("week")))
                 db.commit()
                 return self._send(200, {"ok": True, "id": tid})
+            if path == "/api/program/phases/add":
+                pid = f"PH-{str(body.get('name','phase')).upper().replace(' ','-')[:12]}-{db.execute('SELECT COUNT(*) c FROM program_phases').fetchone()['c'] + 1}"
+                pos = db.execute("SELECT COALESCE(MAX(position), -1) + 1 m FROM program_phases").fetchone()["m"]
+                db.execute("INSERT INTO program_phases VALUES (?,?,?,?,?)", (pid, body.get("name"), body.get("start_date"), body.get("end_date"), pos))
+                db.commit()
+                return self._send(200, {"ok": True, "id": pid})
+            if path == "/api/program/phases/update":
+                db.execute("UPDATE program_phases SET name=?, start_date=?, end_date=? WHERE id=?",
+                           (body.get("name"), body.get("start_date"), body.get("end_date"), body.get("id")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/program/projects/add":
+                pid = f"PRJ-{db.execute('SELECT COUNT(*) c FROM projects').fetchone()['c'] + 1:02d}"
+                db.execute("INSERT INTO projects VALUES (?,?,?,?,?,?,?)",
+                           (pid, body.get("name"), body.get("program_phase_id"), body.get("sap_phase") or "Discover",
+                            body.get("start_date"), body.get("end_date"), body.get("status") or "planned"))
+                db.commit()
+                return self._send(200, {"ok": True, "id": pid})
+            if path == "/api/program/projects/update":
+                db.execute("UPDATE projects SET name=?, program_phase_id=?, sap_phase=?, start_date=?, end_date=?, status=? WHERE id=?",
+                           (body.get("name"), body.get("program_phase_id"), body.get("sap_phase"), body.get("start_date"), body.get("end_date"), body.get("status"), body.get("id")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/program/docrepo":
+                db.execute("INSERT INTO doc_repo (id, provider, webhook_url, enabled) VALUES (1,?,?,?) ON CONFLICT(id) DO UPDATE SET provider=excluded.provider, webhook_url=excluded.webhook_url, enabled=excluded.enabled",
+                           (body.get("provider", "teams"), body.get("webhook_url", ""), 1 if body.get("enabled") else 0))
+                db.commit()
+                return self._send(200, {"ok": True})
             return self._send(404, {"error": "not found"})
         finally:
             db.close()
