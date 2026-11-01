@@ -5,6 +5,8 @@ import json
 import os
 import re
 import sqlite3
+import urllib.request
+import urllib.error
 import zipfile
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -217,6 +219,44 @@ def import_rows(db, kind: str, rows_in):
     return {"imported": imported, "skipped": skipped}
 
 
+def _http_json(method, url, token, payload):
+    req = urllib.request.Request(url, method=method,
+        data=json.dumps(payload).encode() if payload is not None else None,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        body = r.read().decode()
+        return json.loads(body) if body else {}
+
+
+def _todoist_create(token, project_id, title, notes, due_date):
+    payload = {"content": title, "description": notes}
+    if due_date:
+        payload["due_date"] = due_date
+    if project_id:
+        payload["project_id"] = project_id
+    res = _http_json("POST", "https://api.todoist.com/api/v1/tasks", token, payload)
+    return {"id": res.get("id"), "url": res.get("url")}
+
+
+def _google_tasks_create(token, list_id, title, notes, due_date):
+    tasklist = list_id or "default"
+    payload = {"title": title, "notes": notes}
+    if due_date:
+        payload["due"] = f"{due_date}T00:00:00.000Z"
+    res = _http_json("POST", f"https://tasks.googleapis.com/tasks/v1/lists/{tasklist}/tasks", token, payload)
+    return {"id": res.get("id"), "selfLink": res.get("selfLink")}
+
+
+def _ms_todo_create(token, list_id, title, notes, due_date):
+    if not list_id:
+        list_id = "default"
+    payload = {"title": title, "body": {"content": notes, "contentType": "text"}}
+    if due_date:
+        payload["dueDateTime"] = {"dateTime": f"{due_date}T00:00:00.0", "timeZone": "UTC"}
+    res = _http_json("POST", f"https://graph.microsoft.com/v1.0/me/todo/lists/{list_id}/tasks", token, payload)
+    return {"id": res.get("id"), "webUrl": res.get("webUrl")}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -297,6 +337,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"phases": phases, "projects": projects, "doc_repo": dict(repo) if repo else None})
             if path == "/api/agents":
                 return self._send(200, rows(db.execute("SELECT * FROM ai_agents ORDER BY position")))
+            if path == "/api/taskapps":
+                return self._send(200, rows(db.execute("SELECT provider, enabled, list_id FROM task_integrations")))
             self._serve_static(path)
         finally:
             db.close()
@@ -431,6 +473,40 @@ class Handler(BaseHTTPRequestHandler):
                             1 if body.get("enabled", True) else 0, pos))
                 db.commit()
                 return self._send(200, {"ok": True, "name": name})
+            if path == "/api/taskapps/save":
+                provider = body.get("provider")
+                row = db.execute("SELECT provider FROM task_integrations WHERE provider=?", (provider,)).fetchone()
+                if not row:
+                    return self._send(404, {"error": "unknown provider"})
+                db.execute("UPDATE task_integrations SET enabled=?, token=?, list_id=? WHERE provider=?",
+                           (1 if body.get("enabled") else 0, body.get("token", ""), body.get("list_id", ""), provider))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/taskapps/send":
+                provider = body.get("provider")
+                did = body.get("deliverable_id")
+                d = db.execute("SELECT * FROM deliverables WHERE id=?", (did,)).fetchone()
+                if not d:
+                    return self._send(404, {"error": "deliverable not found"})
+                integ = db.execute("SELECT * FROM task_integrations WHERE provider=?", (provider,)).fetchone()
+                if not integ or not integ["enabled"] or not integ["token"]:
+                    return self._send(400, {"error": f"{provider} not configured (enable + token required in settings)"})
+                title = f"[{d['id']}] {d['title']} (gate {d['gate_id']}, due {d['due_date']})"
+                notes = f"Owner: {d['owner']}. {d['description']}"
+                try:
+                    if provider == "todoist":
+                        result = _todoist_create(integ["token"], integ["list_id"], title, notes, d["due_date"])
+                    elif provider == "google_tasks":
+                        result = _google_tasks_create(integ["token"], integ["list_id"], title, notes, d["due_date"])
+                    elif provider == "ms_todo":
+                        result = _ms_todo_create(integ["token"], integ["list_id"], title, notes, d["due_date"])
+                    else:
+                        return self._send(400, {"error": "unknown provider"})
+                except urllib.error.HTTPError as e:
+                    return self._send(502, {"error": f"{provider} API error {e.code}: {e.read().decode()[:200]}"})
+                except Exception as e:
+                    return self._send(502, {"error": f"{provider} call failed: {e}"})
+                return self._send(200, {"ok": True, "provider": provider, "deliverable_id": did, "remote": result})
             return self._send(404, {"error": "not found"})
         finally:
             db.close()
