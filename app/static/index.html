@@ -166,6 +166,11 @@
   .kb-del:hover { color: var(--red); background: rgba(255,125,120,.14); }
   .rowmenu .menu-item { display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px; }
   .rowmenu .menu-item:hover { background: rgba(255,255,255,.1); }
+  .tl { display:inline-block; width:14px; height:14px; border-radius:50%; cursor:pointer; border:2px solid rgba(255,255,255,.25); }
+  .tl-green { background:#3fb950; box-shadow:0 0 8px rgba(63,185,80,.8); }
+  .tl-amber { background:#d29922; box-shadow:0 0 8px rgba(210,153,34,.8); }
+  .tl-red { background:#f85149; box-shadow:0 0 8px rgba(248,81,73,.8); }
+  .tl-lg { width:20px; height:20px; }
 </style>
 </head>
 <body>
@@ -193,6 +198,7 @@
     <button class="menu-item" id="menuRepo" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☁ Document repository</button>
     <button class="menu-item" id="menuAgents" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">🤖 AI agents</button>
     <button class="menu-item" id="menuTaskapps" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☑ Task apps</button>
+    <button class="menu-item" id="menuUsers" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">👤 Users</button>
   </div>
 </header>
 <main id="app"></main>
@@ -257,6 +263,7 @@ document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click',
   else if (b.id === 'menuRepo') settingsTab = 'repo';
   else if (b.id === 'menuAgents') settingsTab = 'agents';
   else if (b.id === 'menuTaskapps') settingsTab = 'taskapps';
+  else if (b.id === 'menuUsers') settingsTab = 'users';
   else settingsTab = 'store';
   currentView = 'settings'; render();
 }));
@@ -275,6 +282,12 @@ async function render() {
   if (currentView === 'timereport') return renderTimeReport();
   if (currentView === 'agents') return renderAgents();
 }
+function lightDot(l, lg) { return `<span class="tl tl-${esc(l||'green')}${lg?' tl-lg':''}" title="${esc(l||'green')}"></span>`; }
+async function setProjectLight(id, light) { await api('/light/project', 'POST', { id, light }); render(); }
+async function setProgramLight(light) { await api('/light/program', 'POST', { light }); render(); }
+function lightPicker(current, onPick) {
+  return `<span style="display:inline-flex;gap:6px;align-items:center">${['green','amber','red'].map(l => `<span class="tl tl-${l}" title="set ${l}" onclick="(${onPick})('${l}')"></span>`).join('')}</span>`;
+}
 async function renderDashboard() {
   const d = await api('/dashboard');
   const g = d.next_gate, r = d.next_gate_readiness;
@@ -282,6 +295,14 @@ async function renderDashboard() {
     <h2>Program Dashboard</h2>
     <div class="sub">Assembled from the record · ${esc(d.today)}</div>
     <div class="grid cards">
+      <div class="card" style="cursor:pointer" onclick="currentView='roadmap';render()" title="Program status — click to open Roadmap">
+        <div class="kpi" style="display:flex;align-items:center;gap:10px">${lightDot(d.program_light, true)} <span style="font-size:14px">Program</span></div>
+        <div class="lbl">Traffic light ${lightPicker(d.program_light, 'setProgramLight')} · click for roadmap</div>
+      </div>
+      ${d.projects.map(p => `<div class="card" style="cursor:pointer" onclick="currentView='roadmap';render()">
+        <div class="kpi" style="display:flex;align-items:center;gap:8px;font-size:16px">${lightDot(p.light)} ${esc(p.id)}</div>
+        <div class="lbl">${esc(p.name)} · ${p.deliverable_count} deliverables · ${esc(p.status)} ${lightPicker(p.light, 'function(l){setProjectLight(\'' + p.id + '\',l)}')}</div>
+      </div>`).join('')}
       <div class="card"><div class="kpi">${r ? r.pct + '%' : '—'}</div><div class="lbl">Evidence readiness · next gate ${esc(g?.id)}</div></div>
       <div class="card"><div class="kpi">${d.counts.open_conditions}</div><div class="lbl">Open gate conditions ${d.counts.overdue_conditions ? `(${d.counts.overdue_conditions} overdue)` : ''}</div></div>
       <div class="card"><div class="kpi">${d.counts.open_decisions}</div><div class="lbl">Open / escalated decisions</div></div>
@@ -378,15 +399,17 @@ async function submitDecision(id) {
   closeModal(); render();
 }
 async function renderRegister() {
-  const [dels, ws, cols] = await Promise.all([api('/deliverables'), api('/workstreams'), api('/kanban/columns')]);
+  const [dels, ws, cols, users, progs] = await Promise.all([api('/deliverables'), api('/workstreams'), api('/kanban/columns'), api('/users'), api('/program')]);
   const wsName = Object.fromEntries(ws.map(w => [w.id, w.name]));
+  const userOptions = users.map(u => `<option value="${esc(u.username)}">${esc(u.name)} (${esc(u.username)})</option>`).join('');
+  const projectOptions = progs.projects.map(p => `<option value="${p.id}">${esc(p.id)}</option>`).join('');
   const stateOptions = cols.map(c => `<option value="${esc(c.id)}">${esc(c.label)}</option>`).join('');
   app.innerHTML = `
     <h2>Deliverables Register</h2>
     <div class="sub">Every deliverable, owned, graded and gated · evidence linked · ⋮ row menu for task apps & sharing</div>
     <div class="panel">
       <table>
-        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th>Grade</th><th></th></tr>
+        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th>Grade</th><th>Responsible</th><th>Project</th><th></th></tr>
         ${dels.map(d => `<tr>
           <td class="small">${esc(d.id)}</td><td>${esc(d.title)}<div class="small muted">${esc(d.description)}</div></td>
           <td class="small">${esc(wsName[d.workstream_id] || d.workstream_id)}</td><td>${esc(d.owner)}</td>
@@ -396,6 +419,8 @@ async function renderRegister() {
           <td class="small">${esc(JSON.parse(d.dependency_ids).join(', ') || '—')}</td>
           <td class="small muted">${d.evidence_ref ? `<a href="#" onclick="return false" title="${esc(d.evidence_ref)}" style="color:#8ab8ff">${esc(d.evidence_ref)}</a>` : 'none cited'}</td>
           <td><select onchange="gradeDel('${d.id}', this.value)">${['','A','B','C','D','F'].map(g => `<option ${g===d.grade?'selected':''} value="${g}">${g||'—'}</option>`).join('')}</select></td>
+          <td><select onchange="assignDel('${d.id}', 'responsible_user', this.value)"><option value="">—</option>${userOptions.replace(`value="${d.responsible_user}"`, `value="${d.responsible_user}" selected`)}</select></td>
+          <td><select onchange="assignDel('${d.id}', 'project_id', this.value)"><option value="">—</option>${projectOptions.replace(`value="${d.project_id}"`, `value="${d.project_id}" selected`)}</select></td>
           <td style="position:relative"><button class="kb-del" style="font-size:15px" title="Actions" onclick="openRowMenu(event, '${d.id}')">⋮</button>
             <div class="rowmenu" id="rm_${d.id}" style="display:none;position:absolute;right:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:190px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:25">
               <div class="small muted" style="padding:4px 8px">Send to task app</div>
@@ -561,7 +586,7 @@ async function renderRoadmap() {
   const phasesLine = r.phases.map(p => p.name).join(' → ');
   app.innerHTML = `
     <h2>Program Overview & Milestone Schedule</h2>
-    <div class="sub">Workstream swimlanes × phases · milestone roadmap below</div>
+    <div class="sub">Workstream swimlanes × phases · milestone roadmap below · traffic lights per project</div>
     <div class="panel" style="margin-bottom:16px">
       <h3>Workstreams</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -582,7 +607,16 @@ async function renderRoadmap() {
       </div>
     </div>
     <div class="panel">
-      <h3>Milestones roadmap</h3>
+      <h3>Projects — traffic light</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:8px">
+        ${r.projects.map(p => `<div style="border:1px solid var(--glass-border);border-radius:12px;padding:10px">
+          <div style="display:flex;align-items:center;gap:8px"><strong>${esc(p.id)}</strong> ${lightDot(p.light)} <span class="small muted">${esc(p.status)}</span></div>
+          <div class="small">${esc(p.name)}</div>
+          <div class="small" style="margin-top:6px">${lightPicker(p.light, 'function(l){setProjectLight(\'' + p.id + '\',l)}')}</div>
+        </div>`).join('')}
+      </div>
+      <h3 style="margin-top:16px">Program traffic light: ${lightDot(r.program_light, true)} ${lightPicker(r.program_light, 'setProgramLight')}</h3>
+      <h3 style="margin-top:16px">Milestones roadmap</h3>
       ${r.milestones.map(m => `
         <div style="display:grid;grid-template-columns:90px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)">
           <div style="font-weight:700;color:#8ab8ff">[${esc(m.label)}]</div>
@@ -737,14 +771,55 @@ async function sendToTaskApp(provider, delivId) {
   if (res.ok) alert('Sent to ' + provider + ' (remote id: ' + (res.remote.id || 'ok') + ')');
   else alert('Send failed: ' + (res.error || 'unknown error'));
 }
+async function renderUsersSettings(projects) {
+  const users = await api('/users');
+  const projOptions = projects.map(p => `<option value="${p.id}">${esc(p.id)} ${esc(p.name)}</option>`).join('');
+  return `
+      <div class="panel">
+        <h3>Users</h3>
+        <table><tr><th>Username</th><th>Name</th><th>Email</th><th>Phone</th><th>Project</th></tr>
+        ${users.map(u => `<tr>
+          <td class="small">${esc(u.username)}</td>
+          <td><input value="${esc(u.name)}" onchange="updUser('${u.username}', 'name', this.value)"></td>
+          <td><input value="${esc(u.email)}" onchange="updUser('${u.username}', 'email', this.value)"></td>
+          <td><input value="${esc(u.phone)}" onchange="updUser('${u.username}', 'phone', this.value)"></td>
+          <td><select onchange="updUser('${u.username}', 'project_id', this.value)"><option value="">—</option>${projOptions.replace(`value="${u.project_id}"`, `value="${u.project_id}" selected`)}</select></td>
+        </tr>`).join('')}
+        </table>
+        <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+          <input id="nuUsername" placeholder="username"><input id="nuName" placeholder="name">
+          <input id="nuEmail" placeholder="email"><input id="nuPhone" placeholder="phone">
+          <select id="nuProject"><option value="">— no project —</option>${projOptions}</select>
+          <button class="btn ghost" onclick="addUser()">+ Add user</button>
+        </div>
+        <div id="userStatus" class="small" style="margin-top:8px;color:var(--green)"></div>
+      </div>`;
+}
+async function updUser(username, field, value) {
+  const users = await api('/users');
+  const u = users.find(x => x.username === username);
+  await api('/users/update', 'POST', { username, name: u.name, email: u.email, phone: u.phone, project_id: u.project_id, [field]: value });
+  document.getElementById('userStatus').textContent = 'Saved ' + username;
+}
+async function addUser() {
+  const res = await api('/users/add', 'POST', {
+    username: document.getElementById('nuUsername').value,
+    name: document.getElementById('nuName').value,
+    email: document.getElementById('nuEmail').value,
+    phone: document.getElementById('nuPhone').value,
+    project_id: document.getElementById('nuProject').value,
+  });
+  if (res.ok) render(); else alert(res.error || 'Error');
+}
 const SETTINGS_TABS = [
-  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['taskapps', 'Task apps'],
+  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['taskapps', 'Task apps'], ['users', 'Users'],
 ];
 async function renderSettings() {
   const mods = await api('/modules');
   const prog = await api('/program');
   const agentsPanel = settingsTab === 'agents' ? await renderAgentsSettings() : '';
   const taskappsPanel = settingsTab === 'taskapps' ? await renderTaskAppsSettings() : '';
+  const usersPanel = settingsTab === 'users' ? await renderUsersSettings(prog.projects) : '';
   const SAP_PHASES = ['Discover', 'Prepare', 'Explore', 'Realize', 'Deploy', 'Run'];
   app.innerHTML = `
     <h2>Settings</h2>
@@ -763,7 +838,7 @@ async function renderSettings() {
       <div class="grid two-col">
         <div class="panel">
           <h3>Import deliverables (.xlsx)</h3>
-          <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, workstream_id, owner, gate_id, state, due_date, evidence_ref, dependency_ids, grade. First row = header.</div>
+          <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, workstream_id, owner, gate_id, state, due_date, evidence_ref, dependency_ids, grade, responsible_user, project_id. First row = header.</div>
           <input type="file" id="impDeliv" accept=".xlsx">
           <div style="margin-top:10px"><button class="btn" onclick="importXlsx('deliverables')">Import deliverables</button></div>
           <div id="impDelivResult" class="small" style="margin-top:8px"></div>
@@ -792,23 +867,26 @@ async function renderSettings() {
       </div>
       <div class="panel">
         <h3>Projects (waves / rollouts)</h3>
-        <table><tr><th>ID</th><th>Project</th><th>Program phase</th><th>SAP Activate phase</th><th>Start</th><th>End</th><th>Status</th></tr>
+        <table><tr><th>ID</th><th>Project</th><th>Program phase</th><th>SAP Activate phase</th><th>Start</th><th>End</th><th>Status</th><th>Light</th></tr>
         ${prog.projects.map(p => `<tr><td class="small">${esc(p.id)}</td>
-          <td><input value="${esc(p.name)}" onchange="updProject('${p.id}', this.value, null, null, null, null, null)"></td>
-          <td><select onchange="updProject('${p.id}', null, this.value, null, null, null, null)">
+          <td><input value="${esc(p.name)}" onchange="updProject('${p.id}', this.value, null, null, null, null, null, null)"></td>
+          <td><select onchange="updProject('${p.id}', null, this.value, null, null, null, null, null)">
             ${prog.phases.map(ph => `<option value="${ph.id}" ${ph.id === p.program_phase_id ? 'selected' : ''}>${esc(ph.name)}</option>`).join('')}</select></td>
-          <td><select onchange="updProject('${p.id}', null, null, this.value, null, null, null)">
+          <td><select onchange="updProject('${p.id}', null, null, this.value, null, null, null, null)">
             ${SAP_PHASES.map(s => `<option ${s === p.sap_phase ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
-          <td><input type="date" value="${esc(p.start_date)}" onchange="updProject('${p.id}', null, null, null, this.value, null, null)"></td>
-          <td><input type="date" value="${esc(p.end_date)}" onchange="updProject('${p.id}', null, null, null, null, this.value, null)"></td>
-          <td><select onchange="updProject('${p.id}', null, null, null, null, null, this.value)">
-            ${['planned','active','completed'].map(s => `<option ${s === p.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td></tr>`).join('')}
+          <td><input type="date" value="${esc(p.start_date)}" onchange="updProject('${p.id}', null, null, null, this.value, null, null, null)"></td>
+          <td><input type="date" value="${esc(p.end_date)}" onchange="updProject('${p.id}', null, null, null, null, this.value, null, null)"></td>
+          <td><select onchange="updProject('${p.id}', null, null, null, null, null, this.value, null)">
+            ${['planned','active','completed'].map(s => `<option ${s === p.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+          <td><select onchange="updProject('${p.id}', null, null, null, null, null, null, this.value)">
+            ${['green','amber','red'].map(s => `<option ${s === p.light ? 'selected' : ''}>${s}</option>`).join('')}</select></td></tr>`).join('')}
         </table>
         <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
           <input id="newPrjName" placeholder="New project name">
           <select id="newPrjPhase">${prog.phases.map(ph => `<option value="${ph.id}">${esc(ph.name)}</option>`).join('')}</select>
           <select id="newPrjSap">${SAP_PHASES.map(s => `<option>${s}</option>`).join('')}</select>
           <input id="newPrjStart" type="date"><input id="newPrjEnd" type="date">
+          <select id="newPrjLight">${['green','amber','red'].map(s => `<option>${s}</option>`).join('')}</select>
           <button class="btn ghost" onclick="addProject()">+ Add project</button>
         </div>
       </div>` : ''}
@@ -828,6 +906,7 @@ async function renderSettings() {
       </div>` : ''}
     ${settingsTab === 'agents' ? agentsPanel : ''}
     ${settingsTab === 'taskapps' ? taskappsPanel : ''}
+    ${settingsTab === 'users' ? usersPanel : ''}
   `;
 }
 async function addPhase() {
@@ -849,13 +928,14 @@ async function addProject() {
     sap_phase: document.getElementById('newPrjSap').value,
     start_date: document.getElementById('newPrjStart').value,
     end_date: document.getElementById('newPrjEnd').value,
+    light: document.getElementById('newPrjLight').value,
   });
   if (res.ok) render();
 }
-async function updProject(id, name, phase, sap, start, end, status) {
+async function updProject(id, name, phase, sap, start, end, status, light) {
   const p = (await api('/program')).projects.find(x => x.id === id);
   await api('/program/projects/update', 'POST', { id, name: name ?? p.name, program_phase_id: phase ?? p.program_phase_id,
-    sap_phase: sap ?? p.sap_phase, start_date: start ?? p.start_date, end_date: end ?? p.end_date, status: status ?? p.status });
+    sap_phase: sap ?? p.sap_phase, start_date: start ?? p.start_date, end_date: end ?? p.end_date, status: status ?? p.status, light: light ?? p.light });
 }
 async function saveRepo() {
   await api('/program/docrepo', 'POST', {
@@ -893,6 +973,7 @@ async function deleteColumn(id) {
   render();
 }
 async function gradeDel(id, grade) { await api('/deliverables/grade', 'POST', { id, grade }); }
+async function assignDel(id, field, value) { await api('/deliverables/assign', 'POST', { id, [field]: value }); }
 async function customizeReport(gateId) {
   const g = await api('/gates/' + gateId + '/report');
   const rc = g.report_config || {};
