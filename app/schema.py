@@ -120,6 +120,34 @@ CREATE TABLE IF NOT EXISTS program_settings (
     light TEXT NOT NULL DEFAULT 'green'
 );
 
+CREATE TABLE IF NOT EXISTS mrf_dimensions (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    weight INTEGER NOT NULL,
+    position INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS mrf_criteria (
+    id TEXT PRIMARY KEY,
+    dimension_id TEXT NOT NULL REFERENCES mrf_dimensions(id),
+    statement TEXT NOT NULL,
+    measure_type TEXT NOT NULL,
+    target TEXT NOT NULL DEFAULT '',
+    thresholds TEXT NOT NULL DEFAULT '{}',
+    source TEXT NOT NULL DEFAULT '',
+    owner TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS mrf_evidence (
+    gate_id TEXT NOT NULL REFERENCES gates(id),
+    criterion_id TEXT NOT NULL REFERENCES mrf_criteria(id),
+    value TEXT NOT NULL DEFAULT '',
+    as_at TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT '',
+    override TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (gate_id, criterion_id)
+);
+
 CREATE TABLE IF NOT EXISTS users (
     username TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -401,6 +429,47 @@ def seed(db: sqlite3.Connection):
         ("MS-06", "19/10", "2026-10-19", "UAT completed (gateways check)", "Handover to AMS; completion of Solution Design Release 2"),
         ("MS-07", "01/11", "2026-11-01", "MAJOR MILESTONE: Release Go-Live", ""),
         ("MS-08", "21/12", "2026-12-21", "Warranty / Hypercare phase finished", "Completion of Solution Build Release 2"),
+    ])
+
+    cur.executemany("INSERT INTO mrf_dimensions VALUES (?,?,?,?)", [
+        ("D1", "Scope", 10, 0),
+        ("D2", "Deliverables", 20, 1),
+        ("D3", "Quality", 15, 2),
+        ("D4", "Dependencies", 15, 3),
+        ("D5", "Resources", 10, 4),
+        ("D6", "Acceptance", 15, 5),
+        ("D7", "Downstream", 10, 6),
+        ("D8", "Risk & blockers", 5, 7),
+    ])
+
+    cur.executemany("INSERT INTO mrf_criteria VALUES (?,?,?,?,?,?,?,?)", [
+        ("D1-01", "D1", "Change requests closed against baseline", "count", "0", '{"green":"==0","amber":"<=2","red":">2"}', "PMO change log", "PMO"),
+        ("D2-01", "D2", "Deliverables in evidence contract verified", "percent", "100", '{"green":">=100","amber":">=90","red":"<90"}', "Deliverables register", "PMO"),
+        ("D3-01", "D3", "Open high-severity defects on milestone scope", "count", "0", '{"green":"==0","amber":"<=3","red":">3"}', "DefectDB report", "QA"),
+        ("D4-01", "D4", "Inbound dependencies landed on or before target", "percent", "100", '{"green":">=100","amber":">=90","red":"<90"}', "Dependency tracker", "PMO"),
+        ("D5-01", "D5", "Named resources confirmed for the cycle", "percent", "100", '{"green":">=100","amber":">=80","red":"<80"}', "Resource plan", "PMO"),
+        ("D6-01", "D6", "Receiving party formally accepted (confirmation on record)", "boolean", "true", '{"green":"true","red":"false"}', "Decision log / confirmation mail", "Gate Chair"),
+        ("D7-01", "D7", "Next milestone can start on planned date", "boolean", "true", '{"green":"true","red":"false"}', "Integrated plan", "PMO"),
+        ("D8-01", "D8", "Open high/critical blockers on this milestone", "count", "0", '{"green":"==0","amber":"<=2","red":">2"}', "RAID register", "PMO"),
+    ])
+
+    cur.executemany("INSERT INTO mrf_evidence VALUES (?,?,?,?,?,?)", [
+        ("E-030", "D1-01", "1", "2026-10-28", "PMO change log 2026-10-28", ""),
+        ("E-030", "D2-01", "25", "2026-10-29", "register export", ""),
+        ("E-030", "D3-01", "2", "2026-10-30", "DefectDB MS-open-high", ""),
+        ("E-030", "D4-01", "80", "2026-10-29", "Dependency tracker", ""),
+        ("E-030", "D5-01", "90", "2026-10-27", "Resource plan W44", ""),
+        ("E-030", "D6-01", "false", "2026-10-30", "", ""),
+        ("E-030", "D7-01", "true", "2026-10-28", "Integrated plan v12", ""),
+        ("E-030", "D8-01", "1", "2026-10-30", "RAID register", ""),
+        ("C-005", "D1-01", "0", "2026-10-30", "PMO change log", ""),
+        ("C-005", "D2-01", "0", "2026-10-30", "register export", ""),
+        ("C-005", "D3-01", "0", "2026-10-30", "DefectDB", ""),
+        ("C-005", "D4-01", "0", "2026-10-30", "Dependency tracker", ""),
+        ("C-005", "D5-01", "0", "2026-10-30", "Resource plan", ""),
+        ("C-005", "D6-01", "false", "2026-10-30", "", ""),
+        ("C-005", "D7-01", "false", "2026-10-30", "Integrated plan", ""),
+        ("C-005", "D8-01", "0", "2026-10-30", "RAID register", ""),
     ])
 
     db.commit()
