@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sqlite3
+import traceback
 import urllib.request
 import urllib.error
 import zipfile
@@ -18,6 +19,12 @@ from schema import SCHEMA, seed, seed_columns
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "milestonehub.db")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+
+def log_error(db, level, source, message, detail=""):
+    db.execute("INSERT INTO error_log (ts, level, source, message, detail) VALUES (?,?,?,?,?)",
+               (date.today().isoformat(), level, source, str(message)[:500], str(detail)[:4000]))
+    db.commit()
 
 
 def get_db():
@@ -67,7 +74,6 @@ BAND_SCORE = {"green": 100, "amber": 60, "red": 20}
 BAND_ORDER = ["green", "amber", "red"]
 
 def _eval_thresholds(measure_type, value, thresholds):
-    """Return 'green'|'amber'|'red'. Unmeasured (empty value/source) -> red. Boolean has no amber."""
     if value in (None, ""):
         return "red"
     th = json.loads(thresholds) if isinstance(thresholds, str) else thresholds
@@ -98,7 +104,6 @@ def _eval_thresholds(measure_type, value, thresholds):
 
 
 def mrf_compute(db, gate_id, stale_days=7):
-    """Milestone Readiness Framework: compute band/score/outcome server-side from evidence only."""
     dims = rows(db.execute("SELECT * FROM mrf_dimensions ORDER BY position"))
     crits = rows(db.execute("SELECT * FROM mrf_criteria ORDER BY id"))
     ev = {r["criterion_id"]: dict(r) for r in db.execute("SELECT * FROM mrf_evidence WHERE gate_id=?", (gate_id,))}
@@ -327,6 +332,18 @@ def _http_json(method, url, token, payload):
         return json.loads(body) if body else {}
 
 
+def _gdrive_upload(token, filename, text):
+    meta = json.dumps({"name": filename, "mimeType": "text/plain"}).encode()
+    boundary = "----thehubboundary"
+    body = (f"--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{meta.decode()}\r\n"
+            f"--{boundary}\r\nContent-Type: text/plain\r\n\r\n{text}\r\n--{boundary}--").encode()
+    req = urllib.request.Request("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+        data=body, method="POST",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": f"multipart/related; boundary={boundary}"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read().decode()).get("id")
+
+
 def _todoist_create(token, project_id, title, notes, due_date):
     payload = {"content": title, "description": notes}
     if due_date:
@@ -358,7 +375,7 @@ def _ms_todo_create(token, list_id, title, notes, due_date):
 
 REPORT_PAGE = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gate report — Milestone Hub</title>
+<title>Gate report — The Hub</title>
 <style>
   body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #f2f5fa; margin: 0; min-height: 100vh;
     background: radial-gradient(900px 600px at 20% 0%, rgba(110,140,255,.3), transparent 60%), radial-gradient(800px 600px at 90% 100%, rgba(160,90,255,.25), transparent 60%), #0a0e1a; padding: 32px; }
@@ -393,10 +410,10 @@ fetch('/api/gates/' + gid + '/report').then(r => r.json()).then(g => {
       ${rc.logo ? `<img src="${rc.logo}" alt="logo" style="max-height:90px;max-width:260px;margin-bottom:20px">` : ''}
       <h1 style="font-size:30px">${rc.front_title || (g.id + ' — ' + g.name)}</h1>
       <p class="muted" style="max-width:560px;margin:12px auto 0;font-size:14px;line-height:1.6">${(rc.front_description || '').replace(/\\n/g,'<br>')}</p>
-      <p class="muted" style="margin-top:18px">Milestone Hub · Gate report · generated ${new Date().toISOString().slice(0,10)}</p>
+      <p class="muted" style="margin-top:18px">The Hub · Gate report · generated ${new Date().toISOString().slice(0,10)}</p>
     </div>` : '';
   document.getElementById('d').innerHTML = front + `
-    <div class="muted">Milestone Hub · Gate report · generated ${new Date().toISOString().slice(0,10)}</div>
+    <div class="muted">The Hub · Gate report · generated ${new Date().toISOString().slice(0,10)}</div>
     <h1>${g.id} — ${g.name}</h1>
     <div class="muted">${g.phase} phase · scheduled ${g.scheduled_date} · Gate Chair: ${g.chair} · status: <b>${g.status}</b>${g.outcome ? ' · ' + g.outcome : ''}</div>
     <h2>Entry / exit criteria</h2>
@@ -422,7 +439,7 @@ fetch('/api/gates/' + gid + '/report').then(r => r.json()).then(g => {
 
 SHARE_PAGE = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shared deliverable — Milestone Hub</title>
+<title>Shared deliverable — The Hub</title>
 <style>
   body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #f2f5fa; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
     background: radial-gradient(900px 600px at 20% 0%, rgba(110,140,255,.3), transparent 60%), radial-gradient(800px 600px at 90% 100%, rgba(160,90,255,.25), transparent 60%), #0a0e1a; }
@@ -439,7 +456,7 @@ fetch('/api/share/' + token).then(r => r.json()).then(res => {
   if (res.error) { document.getElementById('c').textContent = res.error; return; }
   const d = res.deliverable;
   document.getElementById('c').innerHTML = `
-    <div class="muted" style="margin-bottom:8px">Shared from Milestone Hub · ${res.created} · viewed ${res.views}×</div>
+    <div class="muted" style="margin-bottom:8px">Shared from The Hub · ${res.created} · viewed ${res.views}×</div>
     <h1>${d.id} — ${d.title}</h1>
     <p style="margin:10px 0">${d.description || ''}</p>
     <p class="muted">Owner: ${d.owner} · Gate: ${d.gate_id} · Due: ${d.due_date} · Evidence: ${d.evidence_ref || 'none cited'}</p>
@@ -475,6 +492,15 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlparse(self.path).path
         db = get_db()
+        try:
+            return self._do_get(path, db)
+        except Exception as e:
+            log_error(db, "ERROR", "GET " + path, e, traceback.format_exc())
+            self._send(500, {"error": str(e)})
+        finally:
+            db.close()
+
+    def _do_get(self, path, db):
         try:
             if path == "/api/dashboard":
                 return self._send(200, build_dashboard(db))
@@ -561,6 +587,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not db.execute("SELECT id FROM gates WHERE id=?", (gid,)).fetchone():
                     return self._send(404, {"error": "gate not found"})
                 return self._send(200, mrf_compute(db, gid))
+            if path == "/api/errors":
+                return self._send(200, rows(db.execute("SELECT * FROM error_log ORDER BY id DESC LIMIT 200")))
             if path == "/api/agents":
                 return self._send(200, rows(db.execute("SELECT * FROM ai_agents ORDER BY position")))
             if path == "/api/taskapps":
@@ -576,12 +604,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"deliverable": dict(d), "views": sh["views"] + 1, "created": sh["created"]})
             self._serve_static(path)
         finally:
-            db.close()
+            pass
 
     def do_POST(self):
         path = urlparse(self.path).path
-        body = self._json_body()
         db = get_db()
+        try:
+            body = self._json_body()
+            return self._do_post(path, body, db)
+        except Exception as e:
+            log_error(db, "ERROR", "POST " + path, e, traceback.format_exc())
+            self._send(500, {"error": str(e)})
+        finally:
+            db.close()
+
+    def _do_post(self, path, body, db):
         try:
             if path == "/api/gates/decision":
                 gid = body.get("gate_id")
@@ -632,6 +669,22 @@ class Handler(BaseHTTPRequestHandler):
                            (gid, logo, body.get("logo_name", ""), body.get("front_title", ""), body.get("front_description", "")))
                 db.commit()
                 return self._send(200, {"ok": True})
+            if path == "/api/errors/log":
+                log_error(db, body.get("level", "ERROR"), body.get("source", "client"), body.get("message", ""), body.get("detail", ""))
+                return self._send(200, {"ok": True})
+            if path == "/api/errors/sync":
+                token = body.get("token", "")
+                if not token:
+                    return self._send(400, {"error": "google drive token required (settings)"})
+                pend = rows(db.execute("SELECT * FROM error_log WHERE synced=0 ORDER BY id"))
+                if not pend:
+                    return self._send(200, {"ok": True, "synced": 0, "note": "nothing pending"})
+                text = "\n".join(f"[{r['ts']}] {r['level']} {r['source']}: {r['message']} | {r['detail'][:200]}" for r in pend)
+                fname = f"thehub-error-log-{date.today().isoformat()}.txt"
+                res = _gdrive_upload(token, fname, text)
+                db.execute("UPDATE error_log SET synced=1 WHERE synced=0")
+                db.commit()
+                return self._send(200, {"ok": True, "synced": len(pend), "file": res})
             if path == "/api/readiness/evidence":
                 db.execute("INSERT INTO mrf_evidence (gate_id, criterion_id, value, as_at, source, override) VALUES (?,?,?,?,?,?) ON CONFLICT(gate_id, criterion_id) DO UPDATE SET value=excluded.value, as_at=excluded.as_at, source=excluded.source, override=excluded.override",
                            (body.get("gate_id"), body.get("criterion_id"), str(body.get("value", "")), body.get("as_at", date.today().isoformat()), body.get("source", ""), body.get("override", "")))
@@ -806,7 +859,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "token": token, "url": f"/share/{token}"})
             return self._send(404, {"error": "not found"})
         finally:
-            db.close()
+            pass
 
     def _serve_static(self, path):
         if path == "/" or path == "":
@@ -828,7 +881,7 @@ def main():
     init_db()
     port = int(os.environ.get("PORT", 8080))
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"Milestone Hub control center on http://127.0.0.1:{port}")
+    print(f"The Hub on http://127.0.0.1:{port}")
     server.serve_forever()
 
 
