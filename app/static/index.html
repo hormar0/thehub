@@ -178,6 +178,7 @@
     <button data-view="raid">RAID</button>
     <button data-view="gantt">Gantt</button>
     <button data-view="timereport">Time Report</button>
+    <button data-view="agents">AI Agents</button>
     <button data-view="briefing">Briefing Pack</button>
   </nav>
   <button id="hamburger" title="Settings" style="margin-left:auto;background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:7px 12px;cursor:pointer;font-size:16px;line-height:1">☰</button>
@@ -187,6 +188,7 @@
     <button class="menu-item" id="menuImport" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">⇪ Import from Excel</button>
     <button class="menu-item" id="menuProgram" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">▤ Program &amp; projects</button>
     <button class="menu-item" id="menuRepo" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☁ Document repository</button>
+    <button class="menu-item" id="menuAgents" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">🤖 AI agents</button>
   </div>
 </header>
 <main id="app"></main>
@@ -196,7 +198,6 @@ const app = document.getElementById('app');
 let currentView = 'dashboard';
 let moduleMap = {};
 let settingsTab = 'store';
-
 async function api(path, method = 'GET', body = null) {
   const res = await fetch('/api' + path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : null });
   return res.json();
@@ -223,11 +224,10 @@ function condPill(s) {
   const map = { open: ['Open','p-amber'], met: ['Met','p-green'], expired: ['Expired','p-red'] };
   const [t, c] = map[s] || [s, 'p-gray']; return pill(t, c);
 }
-
 async function loadModules() {
   const mods = await api('/modules');
   moduleMap = Object.fromEntries(mods.map(m => [m.name, m]));
-  const viewFor = { decisions: 'ledger', risks: 'raid', gantt: 'gantt', kanban: 'kanban', timereport: 'timereport' };
+  const viewFor = { decisions: 'ledger', risks: 'raid', gantt: 'gantt', kanban: 'kanban', timereport: 'timereport', agents: 'agents' };
   document.querySelectorAll('#nav button').forEach(b => {
     const mod = Object.keys(viewFor).find(k => viewFor[k] === b.dataset.view);
     if (mod) b.style.display = moduleMap[mod] && moduleMap[mod].enabled ? '' : 'none';
@@ -251,10 +251,10 @@ document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click',
   else if (b.id === 'menuImport') settingsTab = 'import';
   else if (b.id === 'menuProgram') settingsTab = 'program';
   else if (b.id === 'menuRepo') settingsTab = 'repo';
+  else if (b.id === 'menuAgents') settingsTab = 'agents';
   else settingsTab = 'store';
   currentView = 'settings'; render();
 }));
-
 async function render() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
   if (currentView === 'dashboard') return renderDashboard();
@@ -267,6 +267,7 @@ async function render() {
   if (currentView === 'settings') return renderSettings();
   if (currentView === 'gantt') return renderGantt();
   if (currentView === 'timereport') return renderTimeReport();
+  if (currentView === 'agents') return renderAgents();
 }
 async function renderDashboard() {
   const d = await api('/dashboard');
@@ -559,12 +560,79 @@ async function addTime() {
   if (res.ok) { out.textContent = 'Logged ' + res.id; out.style.color = 'var(--green)'; setTimeout(render, 400); }
   else { out.textContent = 'Error'; out.style.color = 'var(--red)'; }
 }
+async function renderAgents() {
+  const agents = await api('/agents');
+  app.innerHTML = `
+    <h2>AI Agents</h2>
+    <div class="sub">Governed agents wired into every gate — each with a named owner, grounding contract, and accuracy gate. Configure them in ☰ → AI agents.</div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      ${agents.map(a => `
+        <div class="card" style="${a.enabled ? '' : 'opacity:.45'}">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong>${esc(a.name)}</strong>
+            ${pill(a.enabled ? 'Active' : 'Disabled', a.enabled ? 'p-green' : 'p-gray')}
+          </div>
+          <div class="small muted" style="margin:6px 0">${esc(a.role)}</div>
+          <div class="small">Owner: ${esc(a.owner)} · Accuracy gate: ≥${a.accuracy_gate}%</div>
+          <div class="small muted">Grounding: ${esc(a.grounding)}</div>
+        </div>`).join('')}
+    </div>`;
+}
+async function renderAgentsSettings() {
+  const agents = await api('/agents');
+  return `
+      <div class="panel">
+        <h3>AI agents — governance configuration</h3>
+        <div class="small muted" style="margin-bottom:12px">Every agent ships governed: named owner, grounding contract, refusal rules, accuracy gate. Disable an agent to take it out of gate preparation.</div>
+        <table><tr><th>Agent</th><th>Role</th><th>Owner</th><th>Grounding sources</th><th>Accuracy gate %</th><th>Enabled</th></tr>
+        ${agents.map(a => `<tr>
+          <td><strong>${esc(a.name)}</strong></td>
+          <td><input value="${esc(a.role)}" onchange="updAgent('${esc(a.name)}', 'role', this.value)"></td>
+          <td><input value="${esc(a.owner)}" onchange="updAgent('${esc(a.name)}', 'owner', this.value)"></td>
+          <td><input value="${esc(a.grounding)}" style="min-width:200px" onchange="updAgent('${esc(a.name)}', 'grounding', this.value)"></td>
+          <td><input type="number" value="${a.accuracy_gate}" style="width:70px" onchange="updAgent('${esc(a.name)}', 'accuracy_gate', this.value)"></td>
+          <td><input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="updAgent('${esc(a.name)}', 'enabled', this.checked)"></td>
+        </tr>`).join('')}
+        </table>
+        <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+          <input id="newAgentName" placeholder="New agent name">
+          <input id="newAgentRole" placeholder="Role">
+          <input id="newAgentOwner" placeholder="Owner">
+          <input id="newAgentGrounding" placeholder="Grounding sources">
+          <input id="newAgentGate" type="number" value="90" style="width:80px" title="Accuracy gate %">
+          <button class="btn ghost" onclick="addAgent()">+ Add agent</button>
+        </div>
+        <div id="agentStatus" class="small" style="margin-top:8px;color:var(--green)"></div>
+      </div>`;
+}
+async function updAgent(name, field, value) {
+  const agents = await api('/agents');
+  const a = agents.find(x => x.name === name);
+  const body = { name, role: a.role, owner: a.owner, grounding: a.grounding, accuracy_gate: a.accuracy_gate, enabled: a.enabled };
+  body[field] = field === 'enabled' ? value : (field === 'accuracy_gate' ? parseFloat(value) : value);
+  const res = await api('/agents/update', 'POST', body);
+  const out = document.getElementById('agentStatus');
+  if (out) out.textContent = res.ok ? 'Saved ' + name : 'Error';
+  loadModules();
+}
+async function addAgent() {
+  const res = await api('/agents/add', 'POST', {
+    name: document.getElementById('newAgentName').value,
+    role: document.getElementById('newAgentRole').value,
+    owner: document.getElementById('newAgentOwner').value,
+    grounding: document.getElementById('newAgentGrounding').value,
+    accuracy_gate: parseFloat(document.getElementById('newAgentGate').value || '90'),
+  });
+  if (res.ok) render();
+  else alert(res.error || 'Error');
+}
 const SETTINGS_TABS = [
-  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'],
+  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'],
 ];
 async function renderSettings() {
   const mods = await api('/modules');
   const prog = await api('/program');
+  const agentsPanel = settingsTab === 'agents' ? await renderAgentsSettings() : '';
   const SAP_PHASES = ['Discover', 'Prepare', 'Explore', 'Realize', 'Deploy', 'Run'];
   app.innerHTML = `
     <h2>Settings</h2>
@@ -646,6 +714,7 @@ async function renderSettings() {
         <input id="repoWebhook" style="width:100%" placeholder="https://outlook.office.com/webhook/..." value="${esc((prog.doc_repo && prog.doc_repo.webhook_url) || '')}" onblur="saveRepo()">
         <div id="repoStatus" class="small" style="margin-top:10px;color:var(--green)"></div>
       </div>` : ''}
+    ${settingsTab === 'agents' ? agentsPanel : ''}
   `;
 }
 async function addPhase() {
