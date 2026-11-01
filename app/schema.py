@@ -148,6 +148,16 @@ CREATE TABLE IF NOT EXISTS mrf_evidence (
     PRIMARY KEY (gate_id, criterion_id)
 );
 
+CREATE TABLE IF NOT EXISTS error_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL,
+    level TEXT NOT NULL,
+    source TEXT NOT NULL,
+    message TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '',
+    synced INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS users (
     username TEXT PRIMARY KEY,
     name TEXT NOT NULL,
