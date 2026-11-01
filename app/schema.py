@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS deliverables (
     verified_by TEXT,
     verified_date TEXT,
     evidence_ref TEXT,
-    dependency_ids TEXT NOT NULL DEFAULT '[]'
+    dependency_ids TEXT NOT NULL DEFAULT '[]',
+    grade TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS conditions (
@@ -142,6 +143,22 @@ CREATE TABLE IF NOT EXISTS ai_agents (
     position INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS gate_reports (
+    gate_id TEXT PRIMARY KEY REFERENCES gates(id),
+    logo TEXT NOT NULL DEFAULT '',
+    logo_name TEXT NOT NULL DEFAULT '',
+    front_title TEXT NOT NULL DEFAULT '',
+    front_description TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS milestones (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    sort_key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    details TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS evidence (
     id TEXT PRIMARY KEY,
     deliverable_id TEXT NOT NULL REFERENCES deliverables(id),
@@ -204,36 +221,36 @@ def seed(db: sqlite3.Connection):
     deliverables = [
         ("DEL-001", "Global Process Blueprint", "Standard process blueprint across all countries",
          "WS-CORE", "A. Reinhart", "E-020", "verified", "2026-01-28", "R. Castellanos", "2026-01-29",
-         "SharePoint/BP/2026-014", "[]"),
+         "SharePoint/BP/2026-014", "[]", "A"),
         ("DEL-002", "Fit-Gap Analysis Register", "Consolidated gap register with dispositions",
          "WS-CORE", "A. Reinhart", "E-030", "in_review", "2026-04-08", None, None,
-         "SharePoint/FG/register-v3", "[\"DEL-001\"]"),
+         "SharePoint/FG/register-v3", "[\"DEL-001\"]", "B"),
         ("DEL-003", "Integration Landscape & Contracts", "End-to-end integration design with signed contracts",
          "WS-INT", "M. Okafor", "E-030", "in_progress", "2026-04-05", None, None,
-         "", "[\"DEL-001\"]"),
+         "", "[\"DEL-001\"]", "C"),
         ("DEL-004", "Legacy Data Extraction Specs", "Extraction specs for all legacy systems",
          "WS-DATA", "S. Lindqvist", "E-030", "in_progress", "2026-04-03", None, None,
-         "Jira/DATA-221", "[]"),
+         "Jira/DATA-221", "[]", "B"),
         ("DEL-005", "Data Quality Rules & Profiling Report", "DQ rules signed off with profiling results",
          "WS-DATA", "S. Lindqvist", "E-030", "blocked", "2026-04-09", None, None,
-         "", "[\"DEL-004\"]"),
+         "", "[\"DEL-004\"]", "D"),
         ("DEL-006", "Target Operating Model", "TOM with roles, spans, country adaptations",
          "WS-CHANGE", "L. Moreau", "D-010", "not_started", "2026-06-10", None, None,
-         "", "[\"DEL-002\"]"),
+         "", "[\"DEL-002\"]", ""),
         ("DEL-007", "Training Curriculum & Materials", "Role-based curriculum for 4,000 users",
          "WS-CHANGE", "L. Moreau", "B-010", "not_started", "2026-08-28", None, None,
-         "", "[\"DEL-006\"]"),
+         "", "[\"DEL-006\"]", ""),
         ("DEL-008", "Cutover Runbook v1", "Full cutover runbook with timings and owners",
          "WS-CUT", "D. Petrov", "T-010", "not_started", "2026-11-15", None, None,
-         "", "[\"DEL-003\",\"DEL-005\"]"),
+         "", "[\"DEL-003\",\"DEL-005\"]", ""),
         ("DEL-009", "Mock Cutover Rehearsal #2 Report", "Second rehearsal results with defect log",
          "WS-CUT", "D. Petrov", "C-005", "not_started", "2027-02-19", None, None,
-         "", "[\"DEL-008\"]"),
+         "", "[\"DEL-008\"]", ""),
         ("DEL-010", "Go-Live Readiness Assessment", "Independent readiness evidence pack for go/no-go",
          "WS-CUT", "D. Petrov", "C-005", "not_started", "2027-02-24", None, None,
-         "", "[\"DEL-009\"]"),
+         "", "[\"DEL-009\"]", ""),
     ]
-    cur.executemany("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", deliverables)
+    cur.executemany("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", deliverables)
 
     conditions = [
         ("COND-01", "E-020", "Close top-3 blueprint gaps with named process owners before E-030",
@@ -347,6 +364,17 @@ def seed(db: sqlite3.Connection):
         ("Template Guardian", "Deviation & reuse checks", "Methodology", "Playbooks, templates", 90, 1, 9),
         ("SAP Best Practices", "Fit-to-standard guidance & BP catalog lookup", "SAP lead", "SAP Best Practices explorer, BP content", 92, 1, 10),
         ("Localization Advisor", "Country/language requirements & translation readiness", "Change lead", "Localization playbooks, legal reqs", 90, 1, 11),
+    ])
+
+    cur.executemany("INSERT INTO milestones VALUES (?,?,?,?,?)", [
+        ("MS-01", "15/07", "2026-07-15", "Quality, Organization and Validation", ""),
+        ("MS-02", "30/10", "2026-10-30", "Template build finalized", ""),
+        ("MS-03", "27/06", "2026-06-27", "Template fully validated", "High level scope & business process defined for R2"),
+        ("MS-04", "22/08", "2026-08-22", "Localization build and FIT 1 completed", "Checkpoint for FIT deliverables pre-Milestone 05; detailed project plan & resources defined for R2"),
+        ("MS-05", "Mid-cycle", "2026-09-15", "Checkpoint for UAT / Release / Business Validation start", ""),
+        ("MS-06", "19/10", "2026-10-19", "UAT completed (gateways check)", "Handover to AMS; completion of Solution Design Release 2"),
+        ("MS-07", "01/11", "2026-11-01", "MAJOR MILESTONE: Release Go-Live", ""),
+        ("MS-08", "21/12", "2026-12-21", "Warranty / Hypercare phase finished", "Completion of Solution Build Release 2"),
     ])
 
     db.commit()
