@@ -179,8 +179,15 @@
     <button data-view="gantt">Gantt</button>
     <button data-view="timereport">Time Report</button>
     <button data-view="briefing">Briefing Pack</button>
-    <button data-view="settings">Settings</button>
   </nav>
+  <button id="hamburger" title="Settings" style="margin-left:auto;background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:7px 12px;cursor:pointer;font-size:16px;line-height:1">☰</button>
+  <div id="menu" style="display:none;position:absolute;top:54px;right:16px;background:linear-gradient(165deg, rgba(52,62,92,.85), rgba(22,28,48,.9));border:1px solid var(--glass-border);border-radius:14px;padding:8px;min-width:210px;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);z-index:30">
+    <button class="menu-item" data-view="settings" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">⚙ Settings</button>
+    <button class="menu-item" id="menuModules" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">▦ App store</button>
+    <button class="menu-item" id="menuImport" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">⇪ Import from Excel</button>
+    <button class="menu-item" id="menuProgram" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">▤ Program &amp; projects</button>
+    <button class="menu-item" id="menuRepo" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☁ Document repository</button>
+  </div>
 </header>
 <main id="app"></main>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
@@ -188,6 +195,7 @@
 const app = document.getElementById('app');
 let currentView = 'dashboard';
 let moduleMap = {};
+let settingsTab = 'store';
 
 async function api(path, method = 'GET', body = null) {
   const res = await fetch('/api' + path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : null });
@@ -215,6 +223,7 @@ function condPill(s) {
   const map = { open: ['Open','p-amber'], met: ['Met','p-green'], expired: ['Expired','p-red'] };
   const [t, c] = map[s] || [s, 'p-gray']; return pill(t, c);
 }
+
 async function loadModules() {
   const mods = await api('/modules');
   moduleMap = Object.fromEntries(mods.map(m => [m.name, m]));
@@ -228,6 +237,24 @@ document.getElementById('nav').addEventListener('click', e => {
   const v = e.target.dataset.view;
   if (v) { currentView = v; render(); }
 });
+const menu = document.getElementById('menu');
+document.getElementById('hamburger').addEventListener('click', e => {
+  e.stopPropagation();
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+});
+document.addEventListener('click', e => {
+  if (e.target.id !== 'hamburger' && !menu.contains(e.target)) menu.style.display = 'none';
+});
+document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click', () => {
+  menu.style.display = 'none';
+  if (b.id === 'menuModules') settingsTab = 'store';
+  else if (b.id === 'menuImport') settingsTab = 'import';
+  else if (b.id === 'menuProgram') settingsTab = 'program';
+  else if (b.id === 'menuRepo') settingsTab = 'repo';
+  else settingsTab = 'store';
+  currentView = 'settings'; render();
+}));
+
 async function render() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
   if (currentView === 'dashboard') return renderDashboard();
@@ -532,34 +559,129 @@ async function addTime() {
   if (res.ok) { out.textContent = 'Logged ' + res.id; out.style.color = 'var(--green)'; setTimeout(render, 400); }
   else { out.textContent = 'Error'; out.style.color = 'var(--red)'; }
 }
+const SETTINGS_TABS = [
+  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'],
+];
 async function renderSettings() {
   const mods = await api('/modules');
+  const prog = await api('/program');
+  const SAP_PHASES = ['Discover', 'Prepare', 'Explore', 'Realize', 'Deploy', 'Run'];
   app.innerHTML = `
     <h2>Settings</h2>
-    <div class="sub">App store & Excel import</div>
-    <div class="panel" style="margin-bottom:16px">
-      <h3>App store — enable or disable modules</h3>
-      <table><tr><th>Module</th><th>Enabled</th></tr>
-      ${mods.map(m => `<tr><td>${esc(m.label)}</td>
-        <td><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="toggleModule('${m.name}', this.checked)"></td></tr>`).join('')}
-      </table>
+    <div class="sub">Program configuration, integrations &amp; app store</div>
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+      ${SETTINGS_TABS.map(([k, l]) => `<button class="btn ${settingsTab === k ? '' : 'ghost'}" onclick="settingsTab='${k}';render()">${l}</button>`).join('')}
     </div>
-    <div class="grid two-col">
-      <div class="panel">
-        <h3>Import deliverables (.xlsx)</h3>
-        <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, workstream_id, owner, gate_id, state, due_date, evidence_ref, dependency_ids. First row = header.</div>
-        <input type="file" id="impDeliv" accept=".xlsx">
-        <div style="margin-top:10px"><button class="btn" onclick="importXlsx('deliverables')">Import deliverables</button></div>
-        <div id="impDelivResult" class="small" style="margin-top:8px"></div>
+    ${settingsTab === 'store' ? `
+      <div class="panel"><h3>App store — enable or disable modules</h3>
+        <table><tr><th>Module</th><th>Enabled</th></tr>
+        ${mods.map(m => `<tr><td>${esc(m.label)}</td>
+          <td><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="toggleModule('${m.name}', this.checked)"></td></tr>`).join('')}
+        </table>
+      </div>` : ''}
+    ${settingsTab === 'import' ? `
+      <div class="grid two-col">
+        <div class="panel">
+          <h3>Import deliverables (.xlsx)</h3>
+          <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, workstream_id, owner, gate_id, state, due_date, evidence_ref, dependency_ids. First row = header.</div>
+          <input type="file" id="impDeliv" accept=".xlsx">
+          <div style="margin-top:10px"><button class="btn" onclick="importXlsx('deliverables')">Import deliverables</button></div>
+          <div id="impDelivResult" class="small" style="margin-top:8px"></div>
+        </div>
+        <div class="panel">
+          <h3>Import decisions (.xlsx)</h3>
+          <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, owner, raised_date, needed_by, status, blocks. First row = header.</div>
+          <input type="file" id="impDec" accept=".xlsx">
+          <div style="margin-top:10px"><button class="btn" onclick="importXlsx('decisions')">Import decisions</button></div>
+          <div id="impDecResult" class="small" style="margin-top:8px"></div>
+        </div>
+      </div>` : ''}
+    ${settingsTab === 'program' ? `
+      <div class="panel" style="margin-bottom:16px">
+        <h3>Program phases</h3>
+        <table><tr><th>ID</th><th>Phase</th><th>Start</th><th>End</th></tr>
+        ${prog.phases.map(p => `<tr><td class="small">${esc(p.id)}</td>
+          <td><input value="${esc(p.name)}" onchange="updPhase('${p.id}', this.value, null, null)"></td>
+          <td><input type="date" value="${esc(p.start_date)}" onchange="updPhase('${p.id}', null, this.value, null)"></td>
+          <td><input type="date" value="${esc(p.end_date)}" onchange="updPhase('${p.id}', null, null, this.value)"></td></tr>`).join('')}
+        </table>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <input id="newPhaseName" placeholder="New phase name"><input id="newPhaseStart" type="date"><input id="newPhaseEnd" type="date">
+          <button class="btn ghost" onclick="addPhase()">+ Add phase</button>
+        </div>
       </div>
       <div class="panel">
-        <h3>Import decisions (.xlsx)</h3>
-        <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, owner, raised_date, needed_by, status, blocks. First row = header.</div>
-        <input type="file" id="impDec" accept=".xlsx">
-        <div style="margin-top:10px"><button class="btn" onclick="importXlsx('decisions')">Import decisions</button></div>
-        <div id="impDecResult" class="small" style="margin-top:8px"></div>
-      </div>
-    </div>`;
+        <h3>Projects (waves / rollouts)</h3>
+        <table><tr><th>ID</th><th>Project</th><th>Program phase</th><th>SAP Activate phase</th><th>Start</th><th>End</th><th>Status</th></tr>
+        ${prog.projects.map(p => `<tr><td class="small">${esc(p.id)}</td>
+          <td><input value="${esc(p.name)}" onchange="updProject('${p.id}', this.value, null, null, null, null, null)"></td>
+          <td><select onchange="updProject('${p.id}', null, this.value, null, null, null, null)">
+            ${prog.phases.map(ph => `<option value="${ph.id}" ${ph.id === p.program_phase_id ? 'selected' : ''}>${esc(ph.name)}</option>`).join('')}</select></td>
+          <td><select onchange="updProject('${p.id}', null, null, this.value, null, null, null)">
+            ${SAP_PHASES.map(s => `<option ${s === p.sap_phase ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+          <td><input type="date" value="${esc(p.start_date)}" onchange="updProject('${p.id}', null, null, null, this.value, null, null)"></td>
+          <td><input type="date" value="${esc(p.end_date)}" onchange="updProject('${p.id}', null, null, null, null, this.value, null)"></td>
+          <td><select onchange="updProject('${p.id}', null, null, null, null, null, this.value)">
+            ${['planned','active','completed'].map(s => `<option ${s === p.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td></tr>`).join('')}
+        </table>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+          <input id="newPrjName" placeholder="New project name">
+          <select id="newPrjPhase">${prog.phases.map(ph => `<option value="${ph.id}">${esc(ph.name)}</option>`).join('')}</select>
+          <select id="newPrjSap">${SAP_PHASES.map(s => `<option>${s}</option>`).join('')}</select>
+          <input id="newPrjStart" type="date"><input id="newPrjEnd" type="date">
+          <button class="btn ghost" onclick="addProject()">+ Add project</button>
+        </div>
+      </div>` : ''}
+    ${settingsTab === 'repo' ? `
+      <div class="panel" style="max-width:560px">
+        <h3>Document repository integration</h3>
+        <div class="small muted" style="margin-bottom:12px">Connect the Hub to Microsoft Teams so evidence citations resolve to live documents.</div>
+        <label class="small muted"><input type="checkbox" id="repoEnabled" ${prog.doc_repo && prog.doc_repo.enabled ? 'checked' : ''} onchange="saveRepo()"> Enabled</label>
+        <label class="small muted" style="display:block;margin-top:10px">Provider</label>
+        <select id="repoProvider" style="width:100%" onchange="saveRepo()">
+          <option value="teams" ${prog.doc_repo && prog.doc_repo.provider === 'teams' ? 'selected' : ''}>Microsoft Teams</option>
+          <option value="sharepoint" ${prog.doc_repo && prog.doc_repo.provider === 'sharepoint' ? 'selected' : ''}>SharePoint</option>
+        </select>
+        <label class="small muted" style="display:block;margin-top:10px">Teams incoming webhook URL</label>
+        <input id="repoWebhook" style="width:100%" placeholder="https://outlook.office.com/webhook/..." value="${esc((prog.doc_repo && prog.doc_repo.webhook_url) || '')}" onblur="saveRepo()">
+        <div id="repoStatus" class="small" style="margin-top:10px;color:var(--green)"></div>
+      </div>` : ''}
+  `;
+}
+async function addPhase() {
+  const res = await api('/program/phases/add', 'POST', {
+    name: document.getElementById('newPhaseName').value,
+    start_date: document.getElementById('newPhaseStart').value,
+    end_date: document.getElementById('newPhaseEnd').value,
+  });
+  if (res.ok) render();
+}
+async function updPhase(id, name, start, end) {
+  const p = (await api('/program')).phases.find(x => x.id === id);
+  await api('/program/phases/update', 'POST', { id, name: name ?? p.name, start_date: start ?? p.start_date, end_date: end ?? p.end_date });
+}
+async function addProject() {
+  const res = await api('/program/projects/add', 'POST', {
+    name: document.getElementById('newPrjName').value,
+    program_phase_id: document.getElementById('newPrjPhase').value,
+    sap_phase: document.getElementById('newPrjSap').value,
+    start_date: document.getElementById('newPrjStart').value,
+    end_date: document.getElementById('newPrjEnd').value,
+  });
+  if (res.ok) render();
+}
+async function updProject(id, name, phase, sap, start, end, status) {
+  const p = (await api('/program')).projects.find(x => x.id === id);
+  await api('/program/projects/update', 'POST', { id, name: name ?? p.name, program_phase_id: phase ?? p.program_phase_id,
+    sap_phase: sap ?? p.sap_phase, start_date: start ?? p.start_date, end_date: end ?? p.end_date, status: status ?? p.status });
+}
+async function saveRepo() {
+  await api('/program/docrepo', 'POST', {
+    provider: document.getElementById('repoProvider').value,
+    webhook_url: document.getElementById('repoWebhook').value,
+    enabled: document.getElementById('repoEnabled').checked,
+  });
+  document.getElementById('repoStatus').textContent = 'Saved.';
 }
 async function toggleModule(name, enabled) {
   await api('/modules/toggle', 'POST', { name, enabled });
