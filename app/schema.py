@@ -93,6 +93,31 @@ CREATE TABLE IF NOT EXISTS time_entries (
     week TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS program_phases (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    program_phase_id TEXT NOT NULL,
+    sap_phase TEXT NOT NULL DEFAULT 'Discover',
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'planned'
+);
+
+CREATE TABLE IF NOT EXISTS doc_repo (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    provider TEXT NOT NULL DEFAULT 'teams',
+    webhook_url TEXT NOT NULL DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS evidence (
     id TEXT PRIMARY KEY,
     deliverable_id TEXT NOT NULL REFERENCES deliverables(id),
@@ -260,6 +285,23 @@ def seed(db: sqlite3.Connection):
         ("TE-06", "DEL-006", "L. Moreau", 8.0, "2026-W12"),
     ]
     cur.executemany("INSERT INTO time_entries VALUES (?,?,?,?,?)", time_entries)
+
+    cur.executemany("INSERT INTO program_phases VALUES (?,?,?,?,?)", [
+        ("PH-DISCOVER", "Discover", "2025-10-01", "2025-12-15", 0),
+        ("PH-PREPARE", "Prepare", "2025-12-16", "2026-02-28", 1),
+        ("PH-EXPLORE", "Explore", "2026-03-01", "2026-05-29", 2),
+        ("PH-REALIZE", "Realize", "2026-06-01", "2026-11-30", 3),
+        ("PH-DEPLOY", "Deploy", "2026-12-01", "2027-02-15", 4),
+        ("PH-RUN", "Run", "2027-02-16", "2027-08-31", 5),
+    ])
+
+    cur.executemany("INSERT INTO projects VALUES (?,?,?,?,?,?,?)", [
+        ("PRJ-01", "Wave 1 — HQ & 2 pilot countries", "PH-EXPLORE", "Explore", "2026-03-01", "2026-11-30", "active"),
+        ("PRJ-02", "Wave 2 — Northern Europe", "PH-REALIZE", "Realize", "2026-09-01", "2027-01-31", "planned"),
+        ("PRJ-03", "Wave 3 — APAC & Americas", "PH-DEPLOY", "Deploy", "2026-12-01", "2027-02-15", "planned"),
+    ])
+
+    cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
 
     db.commit()
 
