@@ -118,6 +118,13 @@ CREATE TABLE IF NOT EXISTS doc_repo (
     enabled INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS task_integrations (
+    provider TEXT PRIMARY KEY,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    token TEXT NOT NULL DEFAULT '',
+    list_id TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS ai_agents (
     name TEXT PRIMARY KEY,
     role TEXT NOT NULL,
@@ -313,6 +320,12 @@ def seed(db: sqlite3.Connection):
     ])
 
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
+
+    cur.executemany("INSERT OR IGNORE INTO task_integrations VALUES (?,?,?,?)", [
+        ("google_tasks", 0, "", "default"),
+        ("ms_todo", 0, "", ""),
+        ("todoist", 0, "", ""),
+    ])
 
     cur.executemany("INSERT INTO ai_agents VALUES (?,?,?,?,?,?,?)", [
         ("Program Pulse", "Status & forecasting", "PMO", "SAP Cloud ALM, register, minutes", 90, 1, 0),
