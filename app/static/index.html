@@ -179,6 +179,7 @@
     <button data-view="ledger">Decisions &amp; Conditions</button>
     <button data-view="raid">RAID</button>
     <button data-view="gantt">Gantt</button>
+    <button data-view="roadmap">Roadmap</button>
     <button data-view="timereport">Time Report</button>
     <button data-view="agents">AI Agents</button>
     <button data-view="briefing">Briefing Pack</button>
@@ -270,6 +271,7 @@ async function render() {
   if (currentView === 'briefing') return renderBriefing();
   if (currentView === 'settings') return renderSettings();
   if (currentView === 'gantt') return renderGantt();
+  if (currentView === 'roadmap') return renderRoadmap();
   if (currentView === 'timereport') return renderTimeReport();
   if (currentView === 'agents') return renderAgents();
 }
@@ -291,7 +293,7 @@ async function renderDashboard() {
         <div class="muted small">Scheduled ${esc(g?.scheduled_date)} · Gate Chair: ${esc(g?.chair)} · ${gatePill(g?.status)}</div>
         <div class="bar" style="margin:12px 0"><div style="width:${r?.pct}%"></div></div>
         <div class="small muted">${r?.total} deliverables in the evidence contract · ${r?.verified} verified</div>
-        ${(r?.items || []).map(i => `<div class="att" style="font-size:13px">${esc(i.id)} ${esc(i.title)} — ${statePill(i.state)} ${evPill(i.evidence)}</div>`).join('')}
+        ${(r?.items || []).map(i => `<div class="att" style="font-size:13px">${esc(i.id)} ${esc(i.title)} — ${statePill(i.state)} ${evPill(i.evidence)}${i.grade ? ` · grade ${esc(i.grade)}` : ''}</div>`).join('')}
       </div>
       <div class="panel">
         <h3>Needs your attention — signal, not noise</h3>
@@ -304,7 +306,7 @@ async function renderGates() {
   const current = gates.find(g => g.status === 'in_progress') || gates.find(g => g.status === 'upcoming');
   app.innerHTML = `
     <h2>Gate Rail</h2>
-    <div class="sub">Evidence contract per gate · one named Gate Chair decides</div>
+    <div class="sub">Evidence contract per gate · one named Gate Chair decides · each gate has a printable report</div>
     <div class="gate-rail">
       ${gates.map(g => `
         <div class="gate-node ${current && g.id === current.id ? 'current' : ''}">
@@ -312,7 +314,11 @@ async function renderGates() {
           <div class="gname">${esc(g.name)}</div>
           <div class="bar" style="margin-bottom:6px"><div style="width:${g.readiness.pct}%"></div></div>
           <div class="gdate">${esc(g.scheduled_date)} · readiness ${g.readiness.pct}%</div>
-          <div style="margin-top:8px"><button class="btn ghost" onclick="openGate('${g.id}')">Details</button></div>
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn ghost" onclick="openGate('${g.id}')">Details</button>
+            <button class="btn ghost" onclick="window.open('/report/${g.id}','_blank')">Report</button>
+            <button class="btn ghost" onclick="customizeReport('${g.id}')">✎ Cover</button>
+          </div>
         </div>`).join('')}
     </div>`;
 }
@@ -324,8 +330,8 @@ async function openGate(id) {
     <p style="margin-top:12px"><strong>Entry criteria:</strong> ${esc(g.entry_criteria)}</p>
     <p style="margin-top:8px"><strong>Exit criteria:</strong> ${esc(g.exit_criteria)}</p>
     <p style="margin-top:12px"><strong>Evidence contract (${g.readiness.total} deliverables, ${g.readiness.pct}% ready):</strong></p>
-    <table><tr><th>ID</th><th>Deliverable</th><th>Owner</th><th>State</th><th>Evidence</th></tr>
-    ${g.readiness.items.map(i => `<tr><td>${esc(i.id)}</td><td>${esc(i.title)}</td><td>${esc(i.owner)}</td><td>${statePill(i.state)}</td><td>${evPill(i.evidence)}</td></tr>`).join('')}
+    <table><tr><th>ID</th><th>Deliverable</th><th>Owner</th><th>State</th><th>Evidence</th><th>Grade</th></tr>
+    ${g.readiness.items.map(i => `<tr><td>${esc(i.id)}</td><td>${esc(i.title)}</td><td>${esc(i.owner)}</td><td>${statePill(i.state)}</td><td>${evPill(i.evidence)}</td><td><b>${esc(i.grade || '—')}</b></td></tr>`).join('')}
     </table>
     ${g.conditions.length ? `<p style="margin-top:12px"><strong>Conditions:</strong></p>${g.conditions.map(c => `<div class="att">${esc(c.id)} ${esc(c.text)} — ${condPill(c.status)}</div>`).join('')}` : ''}
     ${g.status === 'in_progress' || g.status === 'upcoming' ? `<div style="margin-top:16px"><button class="btn" onclick="decideGate('${g.id}')">Record gate decision</button></div>` : ''}
@@ -377,10 +383,10 @@ async function renderRegister() {
   const stateOptions = cols.map(c => `<option value="${esc(c.id)}">${esc(c.label)}</option>`).join('');
   app.innerHTML = `
     <h2>Deliverables Register</h2>
-    <div class="sub">Every deliverable, owned and gated · use ⋮ on a row to send it to a task app or share it</div>
+    <div class="sub">Every deliverable, owned, graded and gated · evidence linked · ⋮ row menu for task apps & sharing</div>
     <div class="panel">
       <table>
-        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th></th></tr>
+        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th>Grade</th><th></th></tr>
         ${dels.map(d => `<tr>
           <td class="small">${esc(d.id)}</td><td>${esc(d.title)}<div class="small muted">${esc(d.description)}</div></td>
           <td class="small">${esc(wsName[d.workstream_id] || d.workstream_id)}</td><td>${esc(d.owner)}</td>
@@ -388,7 +394,8 @@ async function renderRegister() {
           <td><select onchange="updDel('${d.id}', this.value)">${stateOptions.replace(`value="${d.state}"`, `value="${d.state}" selected`)}</select></td>
           <td class="small">${esc(d.due_date)}</td>
           <td class="small">${esc(JSON.parse(d.dependency_ids).join(', ') || '—')}</td>
-          <td class="small muted">${esc(d.evidence_ref || 'none cited')}</td>
+          <td class="small muted">${d.evidence_ref ? `<a href="#" onclick="return false" title="${esc(d.evidence_ref)}" style="color:#8ab8ff">${esc(d.evidence_ref)}</a>` : 'none cited'}</td>
+          <td><select onchange="gradeDel('${d.id}', this.value)">${['','A','B','C','D','F'].map(g => `<option ${g===d.grade?'selected':''} value="${g}">${g||'—'}</option>`).join('')}</select></td>
           <td style="position:relative"><button class="kb-del" style="font-size:15px" title="Actions" onclick="openRowMenu(event, '${d.id}')">⋮</button>
             <div class="rowmenu" id="rm_${d.id}" style="display:none;position:absolute;right:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:190px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:25">
               <div class="small muted" style="padding:4px 8px">Send to task app</div>
@@ -442,7 +449,7 @@ async function renderKanban() {
           </div>
           ${byState[c.id].map(d => `
             <div class="kb-card" draggable="true" data-id="${esc(d.id)}">
-              <div class="kb-id">${esc(d.id)} · ${esc(d.gate_id)}</div>
+              <div class="kb-id">${esc(d.id)} · ${esc(d.gate_id)}${d.grade ? ' · ' + esc(d.grade) : ''}</div>
               <div class="kb-title">${esc(d.title)}</div>
               <div class="kb-meta"><span>${esc(d.owner)}</span><span>${esc(wsName[d.workstream_id] || '')}</span><span>due ${esc(d.due_date)}</span></div>
             </div>`).join('')}
@@ -512,8 +519,8 @@ async function renderBriefing() {
       <h4>2 · Evidence completeness</h4>
       <div class="bar" style="max-width:420px;margin:6px 0"><div style="width:${b.readiness?.pct}%"></div></div>
       <div class="small muted">${b.readiness?.pct}% of the evidence contract is ready (${b.readiness?.verified}/${b.readiness?.total} deliverables verified)</div>
-      <table style="margin-top:8px"><tr><th>Deliverable</th><th>State</th><th>Evidence</th></tr>
-      ${(b.readiness?.items || []).map(i => `<tr><td>${esc(i.id)} ${esc(i.title)}</td><td>${statePill(i.state)}</td><td>${evPill(i.evidence)}</td></tr>`).join('')}</table>
+      <table style="margin-top:8px"><tr><th>Deliverable</th><th>State</th><th>Evidence</th><th>Grade</th></tr>
+      ${(b.readiness?.items || []).map(i => `<tr><td>${esc(i.id)} ${esc(i.title)}</td><td>${statePill(i.state)}</td><td>${evPill(i.evidence)}</td><td><b>${esc(i.grade || '—')}</b></td></tr>`).join('')}</table>
       <h4>3 · Exceptions ranked by consequence</h4>
       <ul>${b.attention.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
       <h4>4 · Inherited conditions (carried forward)</h4>
@@ -546,6 +553,43 @@ async function renderGantt() {
             <span class="small muted" style="position:absolute;left:${Math.min(pct(r.date)+2,78)}%;top:0">${esc(r.date)}</span>
           </div>
         </div>`).join('')}
+    </div>`;
+}
+async function renderRoadmap() {
+  const r = await api('/roadmap');
+  const n = r.phases.length;
+  const phasesLine = r.phases.map(p => p.name).join(' → ');
+  app.innerHTML = `
+    <h2>Program Overview & Milestone Schedule</h2>
+    <div class="sub">Workstream swimlanes × phases · milestone roadmap below</div>
+    <div class="panel" style="margin-bottom:16px">
+      <h3>Workstreams</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${r.workstreams.map(w => `<span class="pill p-purple">${esc(w.name)} (${esc(w.lead)})</span>`).join('')}
+      </div>
+      <h3 style="margin-top:14px">Phases</h3>
+      <div class="muted">${phasesLine}</div>
+    </div>
+    <div class="panel" style="margin-bottom:16px">
+      <h3>Workstream × phase grid</h3>
+      <div style="display:grid;grid-template-columns:160px repeat(${n},1fr);gap:4px;align-items:center">
+        <div></div>
+        ${r.phases.map(p => `<div class="small" style="text-align:center;font-weight:700;padding:6px;background:rgba(140,175,255,.15);border-radius:8px">${esc(p.name)}</div>`).join('')}
+        ${r.workstreams.map(w => `
+          <div class="small" style="font-weight:600">${esc(w.name)}</div>
+          ${r.phases.map(p => `<div style="height:34px;border-radius:8px;background:${w.id==='WS-CORE'||w.id==='WS-CUT'?'linear-gradient(90deg,#6ea8ff33,#cfa9ff22)':'rgba(255,255,255,.05)'};border:1px solid var(--glass-border)"></div>`).join('')}
+        `).join('')}
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Milestones roadmap</h3>
+      ${r.milestones.map(m => `
+        <div style="display:grid;grid-template-columns:90px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)">
+          <div style="font-weight:700;color:#8ab8ff">[${esc(m.label)}]</div>
+          <div><b>${esc(m.title)}</b>${m.details ? `<div class="small muted">${esc(m.details)}</div>` : ''}</div>
+        </div>`).join('')}
+      <h3 style="margin-top:16px">Gates</h3>
+      ${r.gates.map(g => `<div class="small" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">${esc(g.id)} · ${esc(g.scheduled_date)} · ${esc(g.name)} — <span class="muted">${esc(g.status)}</span> · <a href="/report/${g.id}" target="_blank" style="color:#8ab8ff">report</a></div>`).join('')}
     </div>`;
 }
 async function renderTimeReport() {
@@ -719,7 +763,7 @@ async function renderSettings() {
       <div class="grid two-col">
         <div class="panel">
           <h3>Import deliverables (.xlsx)</h3>
-          <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, workstream_id, owner, gate_id, state, due_date, evidence_ref, dependency_ids. First row = header.</div>
+          <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, workstream_id, owner, gate_id, state, due_date, evidence_ref, dependency_ids, grade. First row = header.</div>
           <input type="file" id="impDeliv" accept=".xlsx">
           <div style="margin-top:10px"><button class="btn" onclick="importXlsx('deliverables')">Import deliverables</button></div>
           <div id="impDelivResult" class="small" style="margin-top:8px"></div>
@@ -847,6 +891,42 @@ async function deleteColumn(id) {
   if (!confirm('Delete this column? Cards in it move back to "Not started".')) return;
   await api('/kanban/columns/delete', 'POST', { id });
   render();
+}
+async function gradeDel(id, grade) { await api('/deliverables/grade', 'POST', { id, grade }); }
+async function customizeReport(gateId) {
+  const g = await api('/gates/' + gateId + '/report');
+  const rc = g.report_config || {};
+  document.getElementById('modal').innerHTML = `
+    <h3>Customize report cover — ${esc(gateId)}</h3>
+    <label>Front page title</label><input id="rcTitle" value="${esc(rc.front_title || '')}" placeholder="${esc(g.id + ' — ' + g.name)}">
+    <label>Description of the gate</label><textarea id="rcDesc" rows="4" style="width:100%" placeholder="What this gate decides, entry/exit summary…">${esc(rc.front_description || '')}</textarea>
+    <label>Logo (image file)</label><input type="file" id="rcLogo" accept="image/*">
+    ${rc.logo ? `<div class="small muted" style="margin-top:4px">Current: <img src="${rc.logo}" style="max-height:40px;vertical-align:middle"> ${esc(rc.logo_name || '')}</div>` : ''}
+    <div class="row">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn ghost" onclick="window.open('/report/${gateId}','_blank')">Preview</button>
+      <button class="btn" onclick="saveReportCover('${gateId}')">Save cover</button>
+    </div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+async function saveReportCover(gateId) {
+  let logo = '', logoName = '';
+  const f = document.getElementById('rcLogo').files[0];
+  if (f) {
+    logo = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
+    logoName = f.name;
+  }
+  const cur = await api('/gates/' + gateId + '/report');
+  const rc = cur.report_config || {};
+  const res = await api('/gates/report/save', 'POST', {
+    gate_id: gateId,
+    logo: logo || rc.logo || '',
+    logo_name: logoName || rc.logo_name || '',
+    front_title: document.getElementById('rcTitle').value,
+    front_description: document.getElementById('rcDesc').value,
+  });
+  if (res.ok) { closeModal(); alert('Report cover saved. Open the report to see it.'); }
+  else alert('Save failed: ' + (res.error || 'unknown'));
 }
 function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
 document.getElementById('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
