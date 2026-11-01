@@ -262,6 +262,25 @@ def seed(db: sqlite3.Connection):
     ]
     cur.executemany("INSERT INTO gates VALUES (?,?,?,?,?,?,?,?,?,?)", gates)
 
+    cur.executemany("INSERT OR IGNORE INTO gates VALUES (?,?,?,?,?,?,?,?,?,?)", [
+        ("M-15/07", "Milestone 15/07 — Quality, Organization and Validation", "Milestone", "2026-07-15", "upcoming", "R. Castellanos",
+         "Quality/org/validation evidence complete", "Gate passes on assembled evidence", None, None),
+        ("M-27/06", "Milestone 27/06 — Template fully validated; R2 scope defined", "Milestone", "2026-06-27", "upcoming", "R. Castellanos",
+         "Template validated; high-level R2 scope and business process defined", "Gate passes on assembled evidence", None, None),
+        ("M-22/08", "Milestone 22/08 — Localization build & FIT 1 done; R2 plan defined", "Milestone", "2026-08-22", "upcoming", "R. Castellanos",
+         "Localization build and FIT 1 completed; checkpoint for FIT deliverables pre-Milestone 05", "Detailed project plan & resources defined for R2", None, None),
+        ("M-30/10", "Milestone 30/10 — Template build finalized", "Milestone", "2026-10-30", "upcoming", "R. Castellanos",
+         "Template build complete", "Gate passes on assembled evidence", None, None),
+        ("M-MID", "Mid-cycle checkpoint — UAT / Release / Business Validation start", "Milestone", "2026-09-15", "upcoming", "R. Castellanos",
+         "Checkpoint review", "UAT/release/business validation start confirmed", None, None),
+        ("M-19/10", "Milestone 19/10 — UAT completed; handover to AMS; R2 design done", "Milestone", "2026-10-19", "upcoming", "R. Castellanos",
+         "UAT completed (gateways check)", "Handover to AMS; Solution Design Release 2 complete", None, None),
+        ("M-01/11", "MAJOR MILESTONE 01/11 — Release Go-Live", "Go-Live", "2026-11-01", "upcoming", "R. Castellanos",
+         "All prior milestones passed; readiness evidence complete", "Go-live on assembled evidence", None, None),
+        ("M-21/12", "Milestone 21/12 — Hypercare finished; R2 build complete", "Milestone", "2026-12-21", "upcoming", "R. Castellanos",
+         "Warranty / hypercare phase finished", "Solution Build Release 2 complete", None, None),
+    ])
+
     deliverables = [
         ("DEL-001", "Global Process Blueprint", "Standard process blueprint across all countries",
          "WS-CORE", "A. Reinhart", "E-020", "verified", "2026-01-28", "R. Castellanos", "2026-01-29",
