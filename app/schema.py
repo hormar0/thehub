@@ -34,7 +34,9 @@ CREATE TABLE IF NOT EXISTS deliverables (
     verified_date TEXT,
     evidence_ref TEXT,
     dependency_ids TEXT NOT NULL DEFAULT '[]',
-    grade TEXT NOT NULL DEFAULT ''
+    grade TEXT NOT NULL DEFAULT '',
+    responsible_user TEXT NOT NULL DEFAULT '',
+    project_id TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS conditions (
@@ -109,14 +111,37 @@ CREATE TABLE IF NOT EXISTS projects (
     sap_phase TEXT NOT NULL DEFAULT 'Discover',
     start_date TEXT NOT NULL,
     end_date TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'planned'
+    status TEXT NOT NULL DEFAULT 'planned',
+    light TEXT NOT NULL DEFAULT 'green'
 );
 
-CREATE TABLE IF NOT EXISTS doc_repo (
+CREATE TABLE IF NOT EXISTS program_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    provider TEXT NOT NULL DEFAULT 'teams',
-    webhook_url TEXT NOT NULL DEFAULT '',
-    enabled INTEGER NOT NULL DEFAULT 0
+    light TEXT NOT NULL DEFAULT 'green'
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    username TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
+    project_id TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS gate_reports (
+    gate_id TEXT PRIMARY KEY REFERENCES gates(id),
+    logo TEXT NOT NULL DEFAULT '',
+    logo_name TEXT NOT NULL DEFAULT '',
+    front_title TEXT NOT NULL DEFAULT '',
+    front_description TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS milestones (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    sort_key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    details TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS shares (
@@ -143,20 +168,11 @@ CREATE TABLE IF NOT EXISTS ai_agents (
     position INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS gate_reports (
-    gate_id TEXT PRIMARY KEY REFERENCES gates(id),
-    logo TEXT NOT NULL DEFAULT '',
-    logo_name TEXT NOT NULL DEFAULT '',
-    front_title TEXT NOT NULL DEFAULT '',
-    front_description TEXT NOT NULL DEFAULT ''
-);
-
-CREATE TABLE IF NOT EXISTS milestones (
-    id TEXT PRIMARY KEY,
-    label TEXT NOT NULL,
-    sort_key TEXT NOT NULL,
-    title TEXT NOT NULL,
-    details TEXT NOT NULL DEFAULT ''
+CREATE TABLE IF NOT EXISTS doc_repo (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    provider TEXT NOT NULL DEFAULT 'teams',
+    webhook_url TEXT NOT NULL DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS evidence (
@@ -221,36 +237,36 @@ def seed(db: sqlite3.Connection):
     deliverables = [
         ("DEL-001", "Global Process Blueprint", "Standard process blueprint across all countries",
          "WS-CORE", "A. Reinhart", "E-020", "verified", "2026-01-28", "R. Castellanos", "2026-01-29",
-         "SharePoint/BP/2026-014", "[]", "A"),
+         "SharePoint/BP/2026-014", "[]", "A", "areinhart", "PRJ-01"),
         ("DEL-002", "Fit-Gap Analysis Register", "Consolidated gap register with dispositions",
          "WS-CORE", "A. Reinhart", "E-030", "in_review", "2026-04-08", None, None,
-         "SharePoint/FG/register-v3", "[\"DEL-001\"]", "B"),
+         "SharePoint/FG/register-v3", "[\"DEL-001\"]", "B", "areinhart", "PRJ-01"),
         ("DEL-003", "Integration Landscape & Contracts", "End-to-end integration design with signed contracts",
          "WS-INT", "M. Okafor", "E-030", "in_progress", "2026-04-05", None, None,
-         "", "[\"DEL-001\"]", "C"),
+         "", "[\"DEL-001\"]", "C", "mokafor", "PRJ-01"),
         ("DEL-004", "Legacy Data Extraction Specs", "Extraction specs for all legacy systems",
          "WS-DATA", "S. Lindqvist", "E-030", "in_progress", "2026-04-03", None, None,
-         "Jira/DATA-221", "[]", "B"),
+         "Jira/DATA-221", "[]", "B", "slindqvist", "PRJ-02"),
         ("DEL-005", "Data Quality Rules & Profiling Report", "DQ rules signed off with profiling results",
          "WS-DATA", "S. Lindqvist", "E-030", "blocked", "2026-04-09", None, None,
-         "", "[\"DEL-004\"]", "D"),
+         "", "[\"DEL-004\"]", "D", "slindqvist", "PRJ-02"),
         ("DEL-006", "Target Operating Model", "TOM with roles, spans, country adaptations",
          "WS-CHANGE", "L. Moreau", "D-010", "not_started", "2026-06-10", None, None,
-         "", "[\"DEL-002\"]", ""),
+         "", "[\"DEL-002\"]", "", "lmoreau", "PRJ-01"),
         ("DEL-007", "Training Curriculum & Materials", "Role-based curriculum for 4,000 users",
          "WS-CHANGE", "L. Moreau", "B-010", "not_started", "2026-08-28", None, None,
-         "", "[\"DEL-006\"]", ""),
+         "", "[\"DEL-006\"]", "", "lmoreau", "PRJ-02"),
         ("DEL-008", "Cutover Runbook v1", "Full cutover runbook with timings and owners",
          "WS-CUT", "D. Petrov", "T-010", "not_started", "2026-11-15", None, None,
-         "", "[\"DEL-003\",\"DEL-005\"]", ""),
+         "", "[\"DEL-003\",\"DEL-005\"]", "", "dpetrov", "PRJ-03"),
         ("DEL-009", "Mock Cutover Rehearsal #2 Report", "Second rehearsal results with defect log",
          "WS-CUT", "D. Petrov", "C-005", "not_started", "2027-02-19", None, None,
-         "", "[\"DEL-008\"]", ""),
+         "", "[\"DEL-008\"]", "", "dpetrov", "PRJ-03"),
         ("DEL-010", "Go-Live Readiness Assessment", "Independent readiness evidence pack for go/no-go",
          "WS-CUT", "D. Petrov", "C-005", "not_started", "2027-02-24", None, None,
-         "", "[\"DEL-009\"]", ""),
+         "", "[\"DEL-009\"]", "", "dpetrov", "PRJ-03"),
     ]
-    cur.executemany("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", deliverables)
+    cur.executemany("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", deliverables)
 
     conditions = [
         ("COND-01", "E-020", "Close top-3 blueprint gaps with named process owners before E-030",
@@ -337,13 +353,23 @@ def seed(db: sqlite3.Connection):
         ("PH-RUN", "Run", "2027-02-16", "2027-08-31", 5),
     ])
 
-    cur.executemany("INSERT INTO projects VALUES (?,?,?,?,?,?,?)", [
-        ("PRJ-01", "Wave 1 — HQ & 2 pilot countries", "PH-EXPLORE", "Explore", "2026-03-01", "2026-11-30", "active"),
-        ("PRJ-02", "Wave 2 — Northern Europe", "PH-REALIZE", "Realize", "2026-09-01", "2027-01-31", "planned"),
-        ("PRJ-03", "Wave 3 — APAC & Americas", "PH-DEPLOY", "Deploy", "2026-12-01", "2027-02-15", "planned"),
+    cur.executemany("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?)", [
+        ("PRJ-01", "Wave 1 — HQ & 2 pilot countries", "PH-EXPLORE", "Explore", "2026-03-01", "2026-11-30", "active", "green"),
+        ("PRJ-02", "Wave 2 — Northern Europe", "PH-REALIZE", "Realize", "2026-09-01", "2027-01-31", "planned", "amber"),
+        ("PRJ-03", "Wave 3 — APAC & Americas", "PH-DEPLOY", "Deploy", "2026-12-01", "2027-02-15", "planned", "red"),
     ])
 
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
+    cur.execute("INSERT OR IGNORE INTO program_settings VALUES (1, 'green')")
+
+    cur.executemany("INSERT OR IGNORE INTO users VALUES (?,?,?,?,?)", [
+        ("areinhart", "A. Reinhart", "a.reinhart@example.com", "+46 70 111 22 33", "PRJ-01"),
+        ("mokafor", "M. Okafor", "m.okafor@example.com", "+44 7700 900 123", "PRJ-01"),
+        ("slindqvist", "S. Lindqvist", "s.lindqvist@example.com", "+46 70 444 55 66", "PRJ-02"),
+        ("lmoreau", "L. Moreau", "l.moreau@example.com", "+33 6 12 34 56 78", "PRJ-02"),
+        ("dpetrov", "D. Petrov", "d.petrov@example.com", "+385 91 234 5678", "PRJ-03"),
+        ("rcastellanos", "R. Castellanos", "r.castellanos@example.com", "+1 415 555 0132", ""),
+    ])
 
     cur.executemany("INSERT OR IGNORE INTO task_integrations VALUES (?,?,?,?)", [
         ("google_tasks", 0, "", "default"),
