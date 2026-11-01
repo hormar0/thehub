@@ -179,6 +179,7 @@
   <nav id="nav">
     <button data-view="dashboard" class="active">Dashboard</button>
     <button data-view="gates">Gates</button>
+    <button data-view="readiness">Readiness</button>
     <button data-view="register">Register</button>
     <button data-view="kanban">Kanban</button>
     <button data-view="ledger">Decisions &amp; Conditions</button>
@@ -271,6 +272,7 @@ async function render() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
   if (currentView === 'dashboard') return renderDashboard();
   if (currentView === 'gates') return renderGates();
+  if (currentView === 'readiness') return renderReadiness();
   if (currentView === 'register') return renderRegister();
   if (currentView === 'kanban') return renderKanban();
   if (currentView === 'ledger') return renderLedger();
@@ -288,6 +290,7 @@ async function setProgramLight(light) { await api('/light/program', 'POST', { li
 function lightPicker(current, onPick) {
   return `<span style="display:inline-flex;gap:6px;align-items:center">${['green','amber','red'].map(l => `<span class="tl tl-${l}" title="set ${l}" onclick="(${onPick})('${l}')"></span>`).join('')}</span>`;
 }
+const BAND_CLS = { green: 'tl-green', amber: 'tl-amber', red: 'tl-red' };
 async function renderDashboard() {
   const d = await api('/dashboard');
   const g = d.next_gate, r = d.next_gate_readiness;
@@ -314,6 +317,7 @@ async function renderDashboard() {
         <div class="muted small">Scheduled ${esc(g?.scheduled_date)} · Gate Chair: ${esc(g?.chair)} · ${gatePill(g?.status)}</div>
         <div class="bar" style="margin:12px 0"><div style="width:${r?.pct}%"></div></div>
         <div class="small muted">${r?.total} deliverables in the evidence contract · ${r?.verified} verified</div>
+        ${d.mrf ? `<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span class="tl ${BAND_CLS[d.mrf.band]}"></span><span class="small">MRF readiness <b>${d.mrf.score}/100</b> · <b>${d.mrf.outcome}</b> — <a href="#" onclick="currentView='readiness';window._rgGate='${esc(d.mrf.gate_id)}';render();return false" style="color:#8ab8ff">open readiness</a></span></div>` : ''}
         ${(r?.items || []).map(i => `<div class="att" style="font-size:13px">${esc(i.id)} ${esc(i.title)} — ${statePill(i.state)} ${evPill(i.evidence)}${i.grade ? ` · grade ${esc(i.grade)}` : ''}</div>`).join('')}
       </div>
       <div class="panel">
@@ -342,6 +346,68 @@ async function renderGates() {
           </div>
         </div>`).join('')}
     </div>`;
+}
+async function renderReadiness() {
+  const gates = await api('/gates');
+  const sel = document.getElementById('rgSel');
+  const current = sel ? sel.value : (window._rgGate || (gates.find(g => g.status === 'in_progress') || gates[0]).id);
+  window._rgGate = current;
+  const r = await api('/readiness/' + current);
+  const outcomeCls = { READY: 'p-green', CONDITIONAL: 'p-amber', 'NOT READY': 'p-red' }[r.outcome] || 'p-red';
+  app.innerHTML = `
+    <h2>Milestone Readiness — computed from evidence</h2>
+    <div class="sub">Milestone Readiness Framework · status is derived, not declared · bands, score and outcome computed server-side only</div>
+    <div style="display:flex;gap:10px;align-items:stretch;margin-bottom:16px;flex-wrap:wrap">
+      <select id="rgSel" onchange="window._rgGate=this.value;render()">${gates.map(g => `<option ${g.id===current?'selected':''} value="${g.id}">${esc(g.id)} ${esc(g.name)}</option>`).join('')}</select>
+      <div class="card" style="padding:12px 20px"><div class="kpi" style="font-size:26px">${r.score}<span class="muted" style="font-size:14px">/100</span></div><div class="lbl">weighted score · computed ${esc(r.computed_at)}</div></div>
+      <div class="card" style="padding:12px 20px;display:flex;align-items:center;gap:10px"><span class="tl ${BAND_CLS[r.band]} tl-lg"></span><div class="lbl">overall band<br><b>${r.band.toUpperCase()}</b></div></div>
+      <div class="card" style="padding:12px 20px"><span class="pill ${outcomeCls}" style="font-size:14px">${r.outcome}</span><div class="lbl">recommended outcome (mechanical rule)</div></div>
+      <div class="card" style="padding:12px 20px"><div class="kpi" style="font-size:18px">${r.stale_count}</div><div class="lbl">stale / unmeasured criteria · oldest as-at ${esc(r.oldest_as_at || '—')}</div></div>
+    </div>
+    <div class="panel">
+      <h3>Dimension strip — 8 weighted areas (band = computed, never typed)</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px">
+        ${r.dimensions.map(d => `
+          <div style="border:1px solid var(--glass-border);border-radius:12px;padding:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <strong>${esc(d.id)} ${esc(d.name)}</strong>
+              <span style="display:flex;align-items:center;gap:6px"><span class="tl ${BAND_CLS[d.band]}"></span><span class="small">${d.score}</span></span>
+            </div>
+            <div class="small muted">weight ${d.weight}% · score ${d.score} → ${d.band.toUpperCase()}</div>
+            ${d.criteria.map(c => `
+              <div style="display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)">
+                <span class="tl ${BAND_CLS[c.band]}" title="${esc(c.band)}${c.stale?' — STALE, dropped a band':''}${c.override?' · OVERRIDE: '+esc(c.override):''}"></span>
+                <div class="small">${esc(c.id)} ${esc(c.statement)}<div class="muted" style="font-size:11px">value: ${esc(c.value || '— unmeasured = Red')} · as-at ${esc(c.as_at || '—')} · ${esc(c.source || 'no source')}</div></div>
+                <button class="kb-del" title="Edit evidence" onclick="editEvidence('${current}','${c.id}')">✎</button>
+              </div>`).join('')}
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+async function editEvidence(gateId, critId) {
+  const r = await api('/readiness/' + gateId);
+  const crit = r.dimensions.flatMap(d => d.criteria).find(c => c.id === critId);
+  document.getElementById('modal').innerHTML = `
+    <h3>Evidence — ${esc(critId)} (${esc(crit.statement)})</h3>
+    <label>Measured value (empty = unmeasured → Red)</label><input id="evVal" value="${esc(crit.value)}">
+    <label>As-at date (older than 7 days drops a band)</label><input id="evDate" type="date" value="${esc(crit.as_at)}">
+    <label>Source instance (empty = no source → Red)</label><input id="evSrc" value="${esc(crit.source)}">
+    <label>Owner override note (logged + shown as override; cannot change the score)</label><input id="evOv" value="${esc(crit.override || '')}" placeholder="optional">
+    <div class="row">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="saveEvidence('${gateId}','${critId}')">Save evidence</button>
+    </div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+async function saveEvidence(gateId, critId) {
+  await api('/readiness/evidence', 'POST', {
+    gate_id: gateId, criterion_id: critId,
+    value: document.getElementById('evVal').value,
+    as_at: document.getElementById('evDate').value,
+    source: document.getElementById('evSrc').value,
+    override: document.getElementById('evOv').value,
+  });
+  closeModal(); render();
 }
 async function openGate(id) {
   const g = await api('/gates/' + id);
@@ -586,7 +652,7 @@ async function renderRoadmap() {
   const phasesLine = r.phases.map(p => p.name).join(' → ');
   app.innerHTML = `
     <h2>Program Overview & Milestone Schedule</h2>
-    <div class="sub">Workstream swimlanes × phases · milestone roadmap below · traffic lights per project</div>
+    <div class="sub">Workstream swimlanes × phases · milestone roadmap · traffic lights per project</div>
     <div class="panel" style="margin-bottom:16px">
       <h3>Workstreams</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
