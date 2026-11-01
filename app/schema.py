@@ -79,6 +79,20 @@ CREATE TABLE IF NOT EXISTS kanban_columns (
     is_default INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS app_modules (
+    name TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS time_entries (
+    id TEXT PRIMARY KEY,
+    deliverable_id TEXT NOT NULL REFERENCES deliverables(id),
+    owner TEXT NOT NULL,
+    hours REAL NOT NULL,
+    week TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS evidence (
     id TEXT PRIMARY KEY,
     deliverable_id TEXT NOT NULL REFERENCES deliverables(id),
@@ -228,6 +242,24 @@ def seed(db: sqlite3.Connection):
         ("EV-05", "DEL-005", "DQ rules + profiling report", "SharePoint", "", "missing", "2026-04-01"),
     ]
     cur.executemany("INSERT INTO evidence VALUES (?,?,?,?,?,?,?)", evidence)
+
+    cur.executemany("INSERT INTO app_modules VALUES (?,?,?)", [
+        ("decisions", "Decisions", 1),
+        ("risks", "Risks", 1),
+        ("gantt", "Gantt Chart", 1),
+        ("kanban", "Kanban", 1),
+        ("timereport", "Time Reporting", 1),
+    ])
+
+    time_entries = [
+        ("TE-01", "DEL-001", "A. Reinhart", 32.0, "2026-W05"),
+        ("TE-02", "DEL-002", "A. Reinhart", 28.5, "2026-W14"),
+        ("TE-03", "DEL-003", "M. Okafor", 41.0, "2026-W14"),
+        ("TE-04", "DEL-004", "S. Lindqvist", 22.0, "2026-W13"),
+        ("TE-05", "DEL-005", "S. Lindqvist", 12.5, "2026-W13"),
+        ("TE-06", "DEL-006", "L. Moreau", 8.0, "2026-W12"),
+    ]
+    cur.executemany("INSERT INTO time_entries VALUES (?,?,?,?,?)", time_entries)
 
     db.commit()
 
