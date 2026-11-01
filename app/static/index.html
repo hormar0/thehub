@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Milestone Hub — Program Control Center</title>
+<title>The Hub</title>
 <style>
   :root {
     --text: #f2f5fa; --muted: rgba(235, 242, 255, .58);
@@ -17,7 +17,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { min-height: 100%; }
   body {
-    font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: "Inter", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: var(--text);
     background:
       radial-gradient(1100px 700px at 12% -10%, rgba(110, 140, 255, .32), transparent 60%),
@@ -28,7 +28,7 @@
     background-attachment: fixed;
   }
   header {
-    display: flex; align-items: center; gap: 16px; padding: 0 24px; height: 58px;
+    display: flex; align-items: center; gap: 12px; padding: 0 18px; height: 46px;
     position: sticky; top: 0; z-index: 10;
     background: rgba(14, 18, 32, .42);
     border-bottom: 1px solid var(--glass-border);
@@ -36,12 +36,12 @@
     backdrop-filter: blur(28px) saturate(170%);
     -webkit-backdrop-filter: blur(28px) saturate(170%);
   }
-  header .logo { font-weight: 700; font-size: 17px; letter-spacing: .3px; text-shadow: 0 1px 8px rgba(110,168,255,.35); }
+  header .logo { font-weight: 700; font-size: 15px; letter-spacing: .2px; text-shadow: 0 1px 8px rgba(110,168,255,.35); }
   header .logo span { background: linear-gradient(90deg, #8ab8ff, #cfa9ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  nav { display: flex; gap: 4px; margin-left: 12px; }
+  nav { display: flex; gap: 3px; margin-left: 10px; }
   nav button {
     background: transparent; border: 1px solid transparent; color: var(--muted);
-    padding: 8px 12px; border-radius: 10px; cursor: pointer; font-size: 13.5px;
+    padding: 6px 9px; border-radius: 8px; cursor: pointer; font-size: 12.5px;
     transition: all .18s ease;
   }
   nav button:hover { color: var(--text); background: rgba(255,255,255,.06); }
@@ -51,9 +51,9 @@
     border-color: var(--glass-border);
     box-shadow: 0 4px 14px rgba(0,0,0,.25), inset 0 1px 0 var(--glass-highlight);
   }
-  main { padding: 26px; max-width: 1280px; margin: 0 auto; }
-  h2 { font-size: 21px; margin-bottom: 4px; letter-spacing: .2px; text-shadow: 0 1px 10px rgba(0,0,0,.4); }
-  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+  h2 { font-size: 20px; margin-bottom: 4px; letter-spacing: .2px; text-shadow: 0 1px 10px rgba(0,0,0,.4); }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
   .grid { display: grid; gap: 16px; }
   .cards { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
   .card {
@@ -175,7 +175,7 @@
 </head>
 <body>
 <header>
-  <div class="logo">Milestone<span>Hub</span> · Control Center</div>
+  <div class="logo">The<span>Hub</span></div>
   <nav id="nav">
     <button data-view="dashboard" class="active">Dashboard</button>
     <button data-view="gates">Gates</button>
@@ -190,8 +190,8 @@
     <button data-view="agents">AI Agents</button>
     <button data-view="briefing">Briefing Pack</button>
   </nav>
-  <button id="hamburger" title="Settings" style="margin-left:auto;background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:7px 12px;cursor:pointer;font-size:16px;line-height:1">☰</button>
-  <div id="menu" style="display:none;position:absolute;top:54px;right:16px;background:linear-gradient(165deg, rgba(52,62,92,.85), rgba(22,28,48,.9));border:1px solid var(--glass-border);border-radius:14px;padding:8px;min-width:210px;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);z-index:30">
+  <button id="hamburger" title="Settings" style="margin-left:auto;background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1">☰</button>
+  <div id="menu" style="display:none;position:absolute;top:44px;right:14px;background:linear-gradient(165deg, rgba(52,62,92,.85), rgba(22,28,48,.9));border:1px solid var(--glass-border);border-radius:14px;padding:8px;min-width:210px;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);z-index:30">
     <button class="menu-item" data-view="settings" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">⚙ Settings</button>
     <button class="menu-item" id="menuModules" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">▦ App store</button>
     <button class="menu-item" id="menuImport" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">⇪ Import from Excel</button>
@@ -204,6 +204,23 @@
 <main id="app"></main>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
 <script>
+async function reportClientError(level, source, message, detail) {
+  try { await fetch('/api/errors/log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ level, source, message, detail }) }); } catch (e) {}
+}
+window.addEventListener('error', e => reportClientError('ERROR', 'window', e.message, (e.filename || '') + ':' + (e.lineno || '')));
+window.addEventListener('unhandledrejection', e => reportClientError('ERROR', 'unhandledrejection', String(e.reason && e.reason.message || e.reason), ''));
+const _origFetch = window.fetch;
+window.fetch = async function(...args) {
+  try {
+    const res = await _origFetch(...args);
+    if (!res.ok) reportClientError('WARN', 'fetch ' + args[0], 'HTTP ' + res.status, '');
+    return res;
+  } catch (e) {
+    reportClientError('ERROR', 'fetch ' + args[0], e.message, '');
+    throw e;
+  }
+};
 const app = document.getElementById('app');
 let currentView = 'dashboard';
 let moduleMap = {};
@@ -875,6 +892,29 @@ async function addUser() {
   });
   if (res.ok) render(); else alert(res.error || 'Error');
 }
+async function renderErrorLog() {
+  const errs = await api('/errors');
+  return `
+      <div class="panel" style="margin-top:16px">
+        <h3>Error log (readable in ☰ → App store)</h3>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <input id="gdriveToken" type="password" placeholder="Google Drive OAuth token (drive.file scope) — optional, for sync" style="flex:1;min-width:240px">
+          <button class="btn ghost" onclick="syncErrors()">⇪ Sync log to Google Drive</button>
+          <span id="errSync" class="small"></span>
+        </div>
+        <table><tr><th>ID</th><th>Time</th><th>Level</th><th>Source</th><th>Message</th><th>Synced</th></tr>
+        ${errs.slice(0, 30).map(e => `<tr><td class="small">${e.id}</td><td class="small">${esc(e.ts)}</td><td><span class="pill ${e.level==='ERROR'?'p-red':'p-amber'}">${esc(e.level)}</span></td><td class="small">${esc(e.source)}</td><td class="small" title="${esc(e.detail)}">${esc(e.message)}</td><td>${e.synced ? '✓' : '—'}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No errors logged.</td></tr>'}
+        </table>
+      </div>`;
+}
+async function syncErrors() {
+  const out = document.getElementById('errSync');
+  out.textContent = 'Syncing…'; out.style.color = 'var(--muted)';
+  const res = await api('/errors/sync', 'POST', { token: document.getElementById('gdriveToken').value });
+  if (res.ok) { out.textContent = `Synced ${res.synced} entries → Drive file ${res.file || ''}`; out.style.color = 'var(--green)'; }
+  else { out.textContent = 'Error: ' + (res.error || 'unknown'); out.style.color = 'var(--red)'; }
+  render();
+}
 const SETTINGS_TABS = [
   ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['users', 'Users'],
 ];
@@ -884,6 +924,7 @@ async function renderSettings() {
   const agentsPanel = settingsTab === 'agents' ? await renderAgentsSettings() : '';
   const taskappsPanel = settingsTab === 'store' ? await renderTaskAppsSettings() : '';
   const usersPanel = settingsTab === 'users' ? await renderUsersSettings(prog.projects) : '';
+  const errorLogPanel = settingsTab === 'store' ? await renderErrorLog() : '';
   const SAP_PHASES = ['Discover', 'Prepare', 'Explore', 'Realize', 'Deploy', 'Run'];
   app.innerHTML = `
     <h2>Settings</h2>
@@ -898,7 +939,8 @@ async function renderSettings() {
           <td><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="toggleModule('${m.name}', this.checked)"></td></tr>`).join('')}
         </table>
       </div>
-      ${taskappsPanel}` : ''}
+      ${taskappsPanel}
+      ${errorLogPanel}` : ''}
     ${settingsTab === 'import' ? `
       <div class="grid two-col">
         <div class="panel">
