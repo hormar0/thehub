@@ -295,6 +295,8 @@ class Handler(BaseHTTPRequestHandler):
                 projects = rows(db.execute("SELECT p.*, ph.name AS phase_name FROM projects p LEFT JOIN program_phases ph ON ph.id = p.program_phase_id ORDER BY p.start_date"))
                 repo = db.execute("SELECT * FROM doc_repo WHERE id=1").fetchone()
                 return self._send(200, {"phases": phases, "projects": projects, "doc_repo": dict(repo) if repo else None})
+            if path == "/api/agents":
+                return self._send(200, rows(db.execute("SELECT * FROM ai_agents ORDER BY position")))
             self._serve_static(path)
         finally:
             db.close()
@@ -406,6 +408,29 @@ class Handler(BaseHTTPRequestHandler):
                            (body.get("provider", "teams"), body.get("webhook_url", ""), 1 if body.get("enabled") else 0))
                 db.commit()
                 return self._send(200, {"ok": True})
+            if path == "/api/agents/update":
+                name = body.get("name")
+                agent = db.execute("SELECT name FROM ai_agents WHERE name=?", (name,)).fetchone()
+                if not agent:
+                    return self._send(404, {"error": "unknown agent"})
+                db.execute("UPDATE ai_agents SET role=?, owner=?, grounding=?, accuracy_gate=?, enabled=? WHERE name=?",
+                           (body.get("role"), body.get("owner"), body.get("grounding"),
+                            float(body.get("accuracy_gate", 90)), 1 if body.get("enabled") else 0, name))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/agents/add":
+                name = (body.get("name") or "").strip()
+                if not name:
+                    return self._send(400, {"error": "name required"})
+                if db.execute("SELECT name FROM ai_agents WHERE name=?", (name,)).fetchone():
+                    return self._send(400, {"error": "agent already exists"})
+                pos = db.execute("SELECT COALESCE(MAX(position), -1) + 1 m FROM ai_agents").fetchone()["m"]
+                db.execute("INSERT INTO ai_agents VALUES (?,?,?,?,?,?,?)",
+                           (name, body.get("role") or "custom", body.get("owner") or "unassigned",
+                            body.get("grounding") or "", float(body.get("accuracy_gate", 90)),
+                            1 if body.get("enabled", True) else 0, pos))
+                db.commit()
+                return self._send(200, {"ok": True, "name": name})
             return self._send(404, {"error": "not found"})
         finally:
             db.close()
