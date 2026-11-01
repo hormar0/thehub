@@ -198,7 +198,6 @@
     <button class="menu-item" id="menuProgram" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">▤ Program &amp; projects</button>
     <button class="menu-item" id="menuRepo" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☁ Document repository</button>
     <button class="menu-item" id="menuAgents" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">🤖 AI agents</button>
-    <button class="menu-item" id="menuTaskapps" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☑ Task apps</button>
     <button class="menu-item" id="menuUsers" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">👤 Users</button>
   </div>
 </header>
@@ -263,7 +262,6 @@ document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click',
   else if (b.id === 'menuProgram') settingsTab = 'program';
   else if (b.id === 'menuRepo') settingsTab = 'repo';
   else if (b.id === 'menuAgents') settingsTab = 'agents';
-  else if (b.id === 'menuTaskapps') settingsTab = 'taskapps';
   else if (b.id === 'menuUsers') settingsTab = 'users';
   else settingsTab = 'store';
   currentView = 'settings'; render();
@@ -809,7 +807,7 @@ async function renderTaskAppsSettings() {
   const apps = await api('/taskapps');
   const byP = Object.fromEntries(apps.map(a => [a.provider, a]));
   return `
-      <div class="panel">
+      <div class="panel" style="margin-top:16px">
         <h3>Task apps — send deliverables to external task managers</h3>
         <div class="small muted" style="margin-bottom:12px">Enable a provider and paste its API token. Deliverables can then be pushed from the Register via the ⋮ row menu. Tokens are stored locally in the Hub database only.</div>
         ${TASK_APPS.map(([p, label, hint]) => `
@@ -878,13 +876,13 @@ async function addUser() {
   if (res.ok) render(); else alert(res.error || 'Error');
 }
 const SETTINGS_TABS = [
-  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['taskapps', 'Task apps'], ['users', 'Users'],
+  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['users', 'Users'],
 ];
 async function renderSettings() {
   const mods = await api('/modules');
   const prog = await api('/program');
   const agentsPanel = settingsTab === 'agents' ? await renderAgentsSettings() : '';
-  const taskappsPanel = settingsTab === 'taskapps' ? await renderTaskAppsSettings() : '';
+  const taskappsPanel = settingsTab === 'store' ? await renderTaskAppsSettings() : '';
   const usersPanel = settingsTab === 'users' ? await renderUsersSettings(prog.projects) : '';
   const SAP_PHASES = ['Discover', 'Prepare', 'Explore', 'Realize', 'Deploy', 'Run'];
   app.innerHTML = `
@@ -899,7 +897,8 @@ async function renderSettings() {
         ${mods.map(m => `<tr><td>${esc(m.label)}</td>
           <td><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="toggleModule('${m.name}', this.checked)"></td></tr>`).join('')}
         </table>
-      </div>` : ''}
+      </div>
+      ${taskappsPanel}` : ''}
     ${settingsTab === 'import' ? `
       <div class="grid two-col">
         <div class="panel">
@@ -971,7 +970,6 @@ async function renderSettings() {
         <div id="repoStatus" class="small" style="margin-top:10px;color:var(--green)"></div>
       </div>` : ''}
     ${settingsTab === 'agents' ? agentsPanel : ''}
-    ${settingsTab === 'taskapps' ? taskappsPanel : ''}
     ${settingsTab === 'users' ? usersPanel : ''}
   `;
 }
