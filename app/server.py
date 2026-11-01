@@ -257,6 +257,35 @@ def _ms_todo_create(token, list_id, title, notes, due_date):
     return {"id": res.get("id"), "webUrl": res.get("webUrl")}
 
 
+SHARE_PAGE = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shared deliverable — Milestone Hub</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #f2f5fa; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(900px 600px at 20% 0%, rgba(110,140,255,.3), transparent 60%), radial-gradient(800px 600px at 90% 100%, rgba(160,90,255,.25), transparent 60%), #0a0e1a; }
+  .card { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); border-radius: 18px; padding: 28px; max-width: 520px; width: 92vw; box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.2); backdrop-filter: blur(24px); }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .muted { color: rgba(235,242,255,.6); font-size: 13px; }
+  .pill { display:inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid; }
+</style></head>
+<body>
+<div class="card" id="c">Loading…</div>
+<script>
+const token = location.pathname.split('/').pop();
+fetch('/api/share/' + token).then(r => r.json()).then(res => {
+  if (res.error) { document.getElementById('c').textContent = res.error; return; }
+  const d = res.deliverable;
+  document.getElementById('c').innerHTML = `
+    <div class="muted" style="margin-bottom:8px">Shared from Milestone Hub · ${res.created} · viewed ${res.views}×</div>
+    <h1>${d.id} — ${d.title}</h1>
+    <p style="margin:10px 0">${d.description || ''}</p>
+    <p class="muted">Owner: ${d.owner} · Gate: ${d.gate_id} · Due: ${d.due_date} · Evidence: ${d.evidence_ref || 'none cited'}</p>
+    <p style="margin-top:14px"><span class="pill" style="background:rgba(94,227,138,.14);color:#5ee38a;border-color:rgba(94,227,138,.35)">${d.state}</span></p>`;
+});
+</script>
+</body></html>"""
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -339,6 +368,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, rows(db.execute("SELECT * FROM ai_agents ORDER BY position")))
             if path == "/api/taskapps":
                 return self._send(200, rows(db.execute("SELECT provider, enabled, list_id FROM task_integrations")))
+            if path.startswith("/api/share/"):
+                token = path.split("/")[-1]
+                sh = db.execute("SELECT * FROM shares WHERE token=?", (token,)).fetchone()
+                if not sh:
+                    return self._send(404, {"error": "share link not found"})
+                d = db.execute("SELECT * FROM deliverables WHERE id=?", (sh["deliverable_id"],)).fetchone()
+                db.execute("UPDATE shares SET views = views + 1 WHERE token=?", (token,))
+                db.commit()
+                return self._send(200, {"deliverable": dict(d), "views": sh["views"] + 1, "created": sh["created"]})
             self._serve_static(path)
         finally:
             db.close()
@@ -507,6 +545,15 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception as e:
                     return self._send(502, {"error": f"{provider} call failed: {e}"})
                 return self._send(200, {"ok": True, "provider": provider, "deliverable_id": did, "remote": result})
+            if path == "/api/share/create":
+                did = body.get("deliverable_id")
+                d = db.execute("SELECT id FROM deliverables WHERE id=?", (did,)).fetchone()
+                if not d:
+                    return self._send(404, {"error": "deliverable not found"})
+                token = base64.urlsafe_b64encode(os.urandom(9)).decode().rstrip("=")
+                db.execute("INSERT INTO shares VALUES (?,?,?,0)", (token, did, date.today().isoformat()))
+                db.commit()
+                return self._send(200, {"ok": True, "token": token, "url": f"/share/{token}"})
             return self._send(404, {"error": "not found"})
         finally:
             db.close()
@@ -514,6 +561,8 @@ class Handler(BaseHTTPRequestHandler):
     def _serve_static(self, path):
         if path == "/" or path == "":
             path = "/index.html"
+        if path.startswith("/share/"):
+            return self._send(200, SHARE_PAGE, "text/html")
         safe = os.path.normpath(path).lstrip("/")
         full = os.path.join(STATIC_DIR, safe)
         if not full.startswith(STATIC_DIR) or not os.path.isfile(full):
