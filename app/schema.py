@@ -118,6 +118,13 @@ CREATE TABLE IF NOT EXISTS doc_repo (
     enabled INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS shares (
+    token TEXT PRIMARY KEY,
+    deliverable_id TEXT NOT NULL REFERENCES deliverables(id),
+    created TEXT NOT NULL,
+    views INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS task_integrations (
     provider TEXT PRIMARY KEY,
     enabled INTEGER NOT NULL DEFAULT 0,
