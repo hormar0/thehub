@@ -58,7 +58,7 @@ def gate_readiness(db, gate_id):
         state_ok = d["state"] == "verified"
         if state_ok:
             verified += 1
-        items.append({"id": d["id"], "title": d["title"], "owner": d["owner"], "state": d["state"], "due": d["due_date"], "evidence": ev_status, "ready": state_ok and ev_status == "present"})
+        items.append({"id": d["id"], "title": d["title"], "owner": d["owner"], "state": d["state"], "due": d["due_date"], "evidence": ev_status, "grade": d["grade"], "evidence_ref": d["evidence_ref"], "ready": state_ok and ev_status == "present"})
     pct = round(100 * sum(1 for i in items if i["ready"]) / len(items))
     return {"gate_id": gate_id, "total": len(items), "verified": verified, "pct": pct, "items": items}
 
@@ -190,12 +190,13 @@ def import_rows(db, kind: str, rows_in):
                 state = "not_started"
             due = get(r, "due_date", "due") or date.today().isoformat()
             deps = get(r, "dependency_ids", "depends_on")
+            grade = get(r, "grade")
             if existing:
-                db.execute("UPDATE deliverables SET title=?, description=?, workstream_id=?, owner=?, gate_id=?, state=?, due_date=?, evidence_ref=?, dependency_ids=? WHERE id=?",
-                           (title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, get(r, "evidence_ref", "evidence"), deps or "[]", did))
+                db.execute("UPDATE deliverables SET title=?, description=?, workstream_id=?, owner=?, gate_id=?, state=?, due_date=?, evidence_ref=?, dependency_ids=?, grade=? WHERE id=?",
+                           (title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, get(r, "evidence_ref", "evidence"), deps or "[]", grade, did))
             else:
-                db.execute("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                           (did, title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, None, None, get(r, "evidence_ref", "evidence"), deps or "[]"))
+                db.execute("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                           (did, title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, None, None, get(r, "evidence_ref", "evidence"), deps or "[]", grade))
             imported += 1
     elif kind == "decisions":
         for r in rows_in[1:]:
@@ -255,6 +256,70 @@ def _ms_todo_create(token, list_id, title, notes, due_date):
         payload["dueDateTime"] = {"dateTime": f"{due_date}T00:00:00.0", "timeZone": "UTC"}
     res = _http_json("POST", f"https://graph.microsoft.com/v1.0/me/todo/lists/{list_id}/tasks", token, payload)
     return {"id": res.get("id"), "webUrl": res.get("webUrl")}
+
+
+REPORT_PAGE = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gate report — Milestone Hub</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #f2f5fa; margin: 0; min-height: 100vh;
+    background: radial-gradient(900px 600px at 20% 0%, rgba(110,140,255,.3), transparent 60%), radial-gradient(800px 600px at 90% 100%, rgba(160,90,255,.25), transparent 60%), #0a0e1a; padding: 32px; }
+  .doc { max-width: 860px; margin: 0 auto; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); border-radius: 18px; padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,.45); backdrop-filter: blur(20px); }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 24px 0 8px; color: #8ab8ff; }
+  .muted { color: rgba(235,242,255,.6); font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
+  th { text-align: left; color: rgba(235,242,255,.6); font-size: 11.5px; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.15); }
+  td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,.08); vertical-align: top; }
+  .pill { display:inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid; }
+  .grade { font-weight: 700; }
+  .gA { color:#5ee38a; } .gB { color:#ffcf6e; } .gC { color:#ff9d5c; } .gD { color:#ff7d78; }
+  .bar { height: 8px; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
+  .bar > div { height: 100%; background: linear-gradient(90deg,#6ea8ff,#cfa9ff); }
+  @media print { body { background: #fff; color: #111; } .doc { box-shadow: none; border-color: #ccc; background: #fff; } }
+</style></head>
+<body>
+<div class="doc" id="d">Loading…</div>
+<script>
+const gid = location.pathname.split('/').pop();
+const GRADE_CLS = { A: 'gA', B: 'gB', C: 'gC', D: 'gD', F: 'gD' };
+fetch('/api/gates/' + gid + '/report').then(r => r.json()).then(g => {
+  if (g.error) { document.getElementById('d').textContent = g.error; return; }
+  const ev = s => s === 'present' ? '<span class="pill" style="color:#5ee38a;border-color:#5ee38a55">present</span>'
+    : s === 'partial' ? '<span class="pill" style="color:#ffcf6e;border-color:#ffcf6e55">partial</span>'
+    : '<span class="pill" style="color:#ff7d78;border-color:#ff7d7855">missing</span>';
+  const st = s => '<span class="pill" style="color:#cfa9ff;border-color:#cfa9ff55">' + s + '</span>';
+  const rc = g.report_config || {};
+  const front = (rc.logo || rc.front_title || rc.front_description) ? `
+    <div style="text-align:center;padding:40px 0;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:24px;page-break-after:always">
+      ${rc.logo ? `<img src="${rc.logo}" alt="logo" style="max-height:90px;max-width:260px;margin-bottom:20px">` : ''}
+      <h1 style="font-size:30px">${rc.front_title || (g.id + ' — ' + g.name)}</h1>
+      <p class="muted" style="max-width:560px;margin:12px auto 0;font-size:14px;line-height:1.6">${(rc.front_description || '').replace(/\\n/g,'<br>')}</p>
+      <p class="muted" style="margin-top:18px">Milestone Hub · Gate report · generated ${new Date().toISOString().slice(0,10)}</p>
+    </div>` : '';
+  document.getElementById('d').innerHTML = front + `
+    <div class="muted">Milestone Hub · Gate report · generated ${new Date().toISOString().slice(0,10)}</div>
+    <h1>${g.id} — ${g.name}</h1>
+    <div class="muted">${g.phase} phase · scheduled ${g.scheduled_date} · Gate Chair: ${g.chair} · status: <b>${g.status}</b>${g.outcome ? ' · ' + g.outcome : ''}</div>
+    <h2>Entry / exit criteria</h2>
+    <p><b>Entry:</b> ${g.entry_criteria}</p>
+    <p><b>Exit:</b> ${g.exit_criteria}</p>
+    <h2>Evidence readiness: ${g.readiness.pct}%</h2>
+    <div class="bar"><div style="width:${g.readiness.pct}%"></div></div>
+    <h2>Deliverables in the evidence contract</h2>
+    <table><tr><th>ID</th><th>Deliverable</th><th>Owner</th><th>State</th><th>Evidence</th><th>Evidence link</th><th>Grade</th></tr>
+    ${g.readiness.items.map(i => `<tr><td>${i.id}</td><td>${i.title}</td><td>${i.owner}</td><td>${st(i.state)}</td><td>${ev(i.evidence)}</td>
+      <td class="muted">${i.evidence_ref || '—'}</td>
+      <td class="grade ${GRADE_CLS[i.grade] || ''}">${i.grade || '—'}</td></tr>`).join('')}
+    </table>
+    <h2>Conditions from this gate</h2>
+    <table><tr><th>ID</th><th>Condition</th><th>Owner</th><th>Due</th><th>Status</th></tr>
+    ${g.conditions.map(c => `<tr><td>${c.id}</td><td>${c.text}</td><td>${c.owner}</td><td>${c.due_date}</td><td>${c.status}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">None</td></tr>'}
+    </table>
+    <p class="muted" style="margin-top:24px">Print this page (Ctrl+P) for the gate record.</p>`;
+});
+</script>
+</body></html>"""
 
 
 SHARE_PAGE = """<!DOCTYPE html>
@@ -322,6 +387,17 @@ class Handler(BaseHTTPRequestHandler):
                 for g in gates:
                     g["readiness"] = gate_readiness(db, g["id"])
                 return self._send(200, gates)
+            if path.startswith("/api/gates/") and path.endswith("/report"):
+                gid = path.split("/")[3]
+                g = db.execute("SELECT * FROM gates WHERE id=?", (gid,)).fetchone()
+                if not g:
+                    return self._send(404, {"error": "gate not found"})
+                out = dict(g)
+                out["readiness"] = gate_readiness(db, gid)
+                out["conditions"] = rows(db.execute("SELECT * FROM conditions WHERE gate_id=? ORDER BY due_date", (gid,)))
+                rep = db.execute("SELECT * FROM gate_reports WHERE gate_id=?", (gid,)).fetchone()
+                out["report_config"] = dict(rep) if rep else {"gate_id": gid, "logo": "", "logo_name": "", "front_title": "", "front_description": ""}
+                return self._send(200, out)
             if path.startswith("/api/gates/"):
                 gid = path.split("/")[-1]
                 g = db.execute("SELECT * FROM gates WHERE id=?", (gid,)).fetchone()
@@ -364,6 +440,14 @@ class Handler(BaseHTTPRequestHandler):
                 projects = rows(db.execute("SELECT p.*, ph.name AS phase_name FROM projects p LEFT JOIN program_phases ph ON ph.id = p.program_phase_id ORDER BY p.start_date"))
                 repo = db.execute("SELECT * FROM doc_repo WHERE id=1").fetchone()
                 return self._send(200, {"phases": phases, "projects": projects, "doc_repo": dict(repo) if repo else None})
+            if path == "/api/roadmap":
+                return self._send(200, {
+                    "workstreams": rows(db.execute("SELECT * FROM workstreams ORDER BY id")),
+                    "phases": rows(db.execute("SELECT * FROM program_phases ORDER BY position")),
+                    "milestones": rows(db.execute("SELECT * FROM milestones ORDER BY sort_key")),
+                    "gates": rows(db.execute("SELECT * FROM gates ORDER BY scheduled_date")),
+                    "projects": rows(db.execute("SELECT * FROM projects ORDER BY start_date")),
+                })
             if path == "/api/agents":
                 return self._send(200, rows(db.execute("SELECT * FROM ai_agents ORDER BY position")))
             if path == "/api/taskapps":
@@ -410,6 +494,24 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True})
             if path == "/api/deliverables/update":
                 db.execute("UPDATE deliverables SET state=? WHERE id=?", (body.get("state", "not_started"), body.get("id")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/deliverables/grade":
+                db.execute("UPDATE deliverables SET grade=? WHERE id=?", (body.get("grade", ""), body.get("id")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/gates/report/save":
+                gid = body.get("gate_id")
+                g = db.execute("SELECT id FROM gates WHERE id=?", (gid,)).fetchone()
+                if not g:
+                    return self._send(404, {"error": "gate not found"})
+                logo = body.get("logo", "")
+                if logo and not logo.startswith("data:image/"):
+                    return self._send(400, {"error": "logo must be a data:image/* URL"})
+                if len(logo) > 400000:
+                    return self._send(400, {"error": "logo too large (max ~300KB)"})
+                db.execute("INSERT INTO gate_reports (gate_id, logo, logo_name, front_title, front_description) VALUES (?,?,?,?,?) ON CONFLICT(gate_id) DO UPDATE SET logo=excluded.logo, logo_name=excluded.logo_name, front_title=excluded.front_title, front_description=excluded.front_description",
+                           (gid, logo, body.get("logo_name", ""), body.get("front_title", ""), body.get("front_description", "")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/kanban/columns/add":
@@ -561,6 +663,8 @@ class Handler(BaseHTTPRequestHandler):
     def _serve_static(self, path):
         if path == "/" or path == "":
             path = "/index.html"
+        if path.startswith("/report/"):
+            return self._send(200, REPORT_PAGE, "text/html")
         if path.startswith("/share/"):
             return self._send(200, SHARE_PAGE, "text/html")
         safe = os.path.normpath(path).lstrip("/")
