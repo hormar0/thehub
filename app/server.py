@@ -81,9 +81,17 @@ def build_dashboard(db):
         attention.append(f"Escalated decision {d['id']}: {d['title']} (owner: {d['owner']})")
     for d in db.execute("SELECT * FROM deliverables WHERE state='blocked'").fetchall():
         attention.append(f"Blocked deliverable {d['id']}: {d['title']} (owner: {d['owner']})")
-    return {"today": today, "next_gate": dict(next_gate) if next_gate else None, "next_gate_readiness": readiness,
-            "counts": {"open_conditions": open_conditions, "overdue_conditions": overdue_conditions, "open_decisions": open_decisions, "blocked_deliverables": blocked},
-            "attention": attention[:6]}
+    projects = rows(db.execute("SELECT p.*, (SELECT COUNT(*) FROM deliverables d WHERE d.project_id = p.id) AS deliverable_count FROM projects p ORDER BY p.start_date"))
+    pl = db.execute("SELECT light FROM program_settings WHERE id=1").fetchone()
+    return {
+        "today": today,
+        "program_light": pl["light"] if pl else "green",
+        "projects": projects,
+        "next_gate": dict(next_gate) if next_gate else None,
+        "next_gate_readiness": readiness,
+        "counts": {"open_conditions": open_conditions, "overdue_conditions": overdue_conditions, "open_decisions": open_decisions, "blocked_deliverables": blocked},
+        "attention": attention[:6],
+    }
 
 
 def build_briefing(db):
@@ -191,12 +199,14 @@ def import_rows(db, kind: str, rows_in):
             due = get(r, "due_date", "due") or date.today().isoformat()
             deps = get(r, "dependency_ids", "depends_on")
             grade = get(r, "grade")
+            resp = get(r, "responsible_user")
+            proj = get(r, "project_id", "project")
             if existing:
-                db.execute("UPDATE deliverables SET title=?, description=?, workstream_id=?, owner=?, gate_id=?, state=?, due_date=?, evidence_ref=?, dependency_ids=?, grade=? WHERE id=?",
-                           (title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, get(r, "evidence_ref", "evidence"), deps or "[]", grade, did))
+                db.execute("UPDATE deliverables SET title=?, description=?, workstream_id=?, owner=?, gate_id=?, state=?, due_date=?, evidence_ref=?, dependency_ids=?, grade=?, responsible_user=?, project_id=? WHERE id=?",
+                           (title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, get(r, "evidence_ref", "evidence"), deps or "[]", grade, resp, proj, did))
             else:
-                db.execute("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                           (did, title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, None, None, get(r, "evidence_ref", "evidence"), deps or "[]", grade))
+                db.execute("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                           (did, title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, None, None, get(r, "evidence_ref", "evidence"), deps or "[]", grade, resp, proj))
             imported += 1
     elif kind == "decisions":
         for r in rows_in[1:]:
@@ -439,7 +449,10 @@ class Handler(BaseHTTPRequestHandler):
                 phases = rows(db.execute("SELECT * FROM program_phases ORDER BY position"))
                 projects = rows(db.execute("SELECT p.*, ph.name AS phase_name FROM projects p LEFT JOIN program_phases ph ON ph.id = p.program_phase_id ORDER BY p.start_date"))
                 repo = db.execute("SELECT * FROM doc_repo WHERE id=1").fetchone()
-                return self._send(200, {"phases": phases, "projects": projects, "doc_repo": dict(repo) if repo else None})
+                ps = db.execute("SELECT light FROM program_settings WHERE id=1").fetchone()
+                return self._send(200, {"phases": phases, "projects": projects, "doc_repo": dict(repo) if repo else None, "program_light": ps["light"] if ps else "green"})
+            if path == "/api/users":
+                return self._send(200, rows(db.execute("SELECT u.*, p.name AS project_name FROM users u LEFT JOIN projects p ON p.id = u.project_id ORDER BY u.username")))
             if path == "/api/roadmap":
                 return self._send(200, {
                     "workstreams": rows(db.execute("SELECT * FROM workstreams ORDER BY id")),
@@ -447,6 +460,7 @@ class Handler(BaseHTTPRequestHandler):
                     "milestones": rows(db.execute("SELECT * FROM milestones ORDER BY sort_key")),
                     "gates": rows(db.execute("SELECT * FROM gates ORDER BY scheduled_date")),
                     "projects": rows(db.execute("SELECT * FROM projects ORDER BY start_date")),
+                    "program_light": db.execute("SELECT light FROM program_settings WHERE id=1").fetchone()["light"],
                 })
             if path == "/api/agents":
                 return self._send(200, rows(db.execute("SELECT * FROM ai_agents ORDER BY position")))
@@ -496,6 +510,11 @@ class Handler(BaseHTTPRequestHandler):
                 db.execute("UPDATE deliverables SET state=? WHERE id=?", (body.get("state", "not_started"), body.get("id")))
                 db.commit()
                 return self._send(200, {"ok": True})
+            if path == "/api/deliverables/assign":
+                db.execute("UPDATE deliverables SET responsible_user=?, project_id=? WHERE id=?",
+                           (body.get("responsible_user", ""), body.get("project_id", ""), body.get("id")))
+                db.commit()
+                return self._send(200, {"ok": True})
             if path == "/api/deliverables/grade":
                 db.execute("UPDATE deliverables SET grade=? WHERE id=?", (body.get("grade", ""), body.get("id")))
                 db.commit()
@@ -512,6 +531,31 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {"error": "logo too large (max ~300KB)"})
                 db.execute("INSERT INTO gate_reports (gate_id, logo, logo_name, front_title, front_description) VALUES (?,?,?,?,?) ON CONFLICT(gate_id) DO UPDATE SET logo=excluded.logo, logo_name=excluded.logo_name, front_title=excluded.front_title, front_description=excluded.front_description",
                            (gid, logo, body.get("logo_name", ""), body.get("front_title", ""), body.get("front_description", "")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/light/project":
+                db.execute("UPDATE projects SET light=? WHERE id=?", (body.get("light", "green"), body.get("id")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/light/program":
+                db.execute("INSERT INTO program_settings (id, light) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET light=excluded.light", (body.get("light", "green"),))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/users/add":
+                un = (body.get("username") or "").strip().lower()
+                if not un:
+                    return self._send(400, {"error": "username required"})
+                if db.execute("SELECT username FROM users WHERE username=?", (un,)).fetchone():
+                    return self._send(400, {"error": "username taken"})
+                db.execute("INSERT INTO users VALUES (?,?,?,?,?)", (un, body.get("name"), body.get("email", ""), body.get("phone", ""), body.get("project_id", "")))
+                db.commit()
+                return self._send(200, {"ok": True, "username": un})
+            if path == "/api/users/update":
+                un = body.get("username")
+                if not db.execute("SELECT username FROM users WHERE username=?", (un,)).fetchone():
+                    return self._send(404, {"error": "user not found"})
+                db.execute("UPDATE users SET name=?, email=?, phone=?, project_id=? WHERE username=?",
+                           (body.get("name"), body.get("email", ""), body.get("phone", ""), body.get("project_id", ""), un))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/kanban/columns/add":
@@ -575,14 +619,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True})
             if path == "/api/program/projects/add":
                 pid = f"PRJ-{db.execute('SELECT COUNT(*) c FROM projects').fetchone()['c'] + 1:02d}"
-                db.execute("INSERT INTO projects VALUES (?,?,?,?,?,?,?)",
+                db.execute("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?)",
                            (pid, body.get("name"), body.get("program_phase_id"), body.get("sap_phase") or "Discover",
-                            body.get("start_date"), body.get("end_date"), body.get("status") or "planned"))
+                            body.get("start_date"), body.get("end_date"), body.get("status") or "planned", body.get("light") or "green"))
                 db.commit()
                 return self._send(200, {"ok": True, "id": pid})
             if path == "/api/program/projects/update":
-                db.execute("UPDATE projects SET name=?, program_phase_id=?, sap_phase=?, start_date=?, end_date=?, status=? WHERE id=?",
-                           (body.get("name"), body.get("program_phase_id"), body.get("sap_phase"), body.get("start_date"), body.get("end_date"), body.get("status"), body.get("id")))
+                db.execute("UPDATE projects SET name=?, program_phase_id=?, sap_phase=?, start_date=?, end_date=?, status=?, light=? WHERE id=?",
+                           (body.get("name"), body.get("program_phase_id"), body.get("sap_phase"), body.get("start_date"), body.get("end_date"), body.get("status"), body.get("light", "green"), body.get("id")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/program/docrepo":
