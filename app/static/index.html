@@ -176,7 +176,10 @@
     <button data-view="kanban">Kanban</button>
     <button data-view="ledger">Decisions &amp; Conditions</button>
     <button data-view="raid">RAID</button>
+    <button data-view="gantt">Gantt</button>
+    <button data-view="timereport">Time Report</button>
     <button data-view="briefing">Briefing Pack</button>
+    <button data-view="settings">Settings</button>
   </nav>
 </header>
 <main id="app"></main>
@@ -184,6 +187,8 @@
 <script>
 const app = document.getElementById('app');
 let currentView = 'dashboard';
+let moduleMap = {};
+
 async function api(path, method = 'GET', body = null) {
   const res = await fetch('/api' + path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : null });
   return res.json();
@@ -210,9 +215,14 @@ function condPill(s) {
   const map = { open: ['Open','p-amber'], met: ['Met','p-green'], expired: ['Expired','p-red'] };
   const [t, c] = map[s] || [s, 'p-gray']; return pill(t, c);
 }
-function decPill(s) {
-  const map = { open: ['Open','p-amber'], escalated: ['Escalated','p-red'], decided: ['Decided','p-green'] };
-  const [t, c] = map[s] || [s, 'p-gray']; return pill(t, c);
+async function loadModules() {
+  const mods = await api('/modules');
+  moduleMap = Object.fromEntries(mods.map(m => [m.name, m]));
+  const viewFor = { decisions: 'ledger', risks: 'raid', gantt: 'gantt', kanban: 'kanban', timereport: 'timereport' };
+  document.querySelectorAll('#nav button').forEach(b => {
+    const mod = Object.keys(viewFor).find(k => viewFor[k] === b.dataset.view);
+    if (mod) b.style.display = moduleMap[mod] && moduleMap[mod].enabled ? '' : 'none';
+  });
 }
 document.getElementById('nav').addEventListener('click', e => {
   const v = e.target.dataset.view;
@@ -227,6 +237,9 @@ async function render() {
   if (currentView === 'ledger') return renderLedger();
   if (currentView === 'raid') return renderRaid();
   if (currentView === 'briefing') return renderBriefing();
+  if (currentView === 'settings') return renderSettings();
+  if (currentView === 'gantt') return renderGantt();
+  if (currentView === 'timereport') return renderTimeReport();
 }
 async function renderDashboard() {
   const d = await api('/dashboard');
@@ -347,7 +360,7 @@ async function renderRegister() {
       </table>
     </div>`;
 }
-async function updDel(id, state) { await api('/deliverables/update', 'POST', { id, state }); renderDashboardIf(); }
+async function updDel(id, state) { await api('/deliverables/update', 'POST', { id, state }); if (currentView === 'dashboard') renderDashboard(); }
 const STATE_PILL_CLS = { not_started: 'p-gray', in_progress: 'p-amber', in_review: 'p-purple', blocked: 'p-red', verified: 'p-green' };
 async function renderKanban() {
   const [dels, ws, cols] = await Promise.all([api('/deliverables'), api('/workstreams'), api('/kanban/columns')]);
@@ -391,7 +404,6 @@ async function renderKanban() {
     });
   });
 }
-function renderDashboardIf() { if (currentView === 'dashboard') renderDashboard(); }
 async function renderLedger() {
   const [conds, decs] = await Promise.all([api('/conditions'), api('/decisions')]);
   app.innerHTML = `
@@ -456,6 +468,115 @@ async function renderBriefing() {
       <ul>${b.forecast.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
     </div>`;
 }
+async function renderGantt() {
+  const g = await api('/gantt');
+  const all = [...g.deliverables.map(d => ({...d, kind: 'del', label: d.id + ' ' + d.title, date: d.due_date})),
+               ...g.gates.map(x => ({...x, kind: 'gate', label: x.id + ' ' + x.name, date: x.scheduled_date}))]
+              .sort((a, b) => a.date.localeCompare(b.date));
+  const min = all[0].date, max = all[all.length - 1].date;
+  const span = (new Date(max) - new Date(min)) / 86400000 || 1;
+  const pct = d => Math.max(0, Math.min(100, (new Date(d) - new Date(min)) / 86400000 / span * 100));
+  app.innerHTML = `
+    <h2>Gantt — deliverables & gates timeline</h2>
+    <div class="sub">${min} → ${max}</div>
+    <div class="panel">
+      ${all.map(r => `
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+          <div class="small">${r.kind === 'gate' ? '◆' : '•'} ${esc(r.label)} <span class="muted">${esc(r.owner || '')}</span></div>
+          <div style="position:relative;height:18px;background:rgba(255,255,255,.06);border-radius:6px">
+            <div style="position:absolute;left:${pct(r.date)}%;width:${r.kind==='gate'?2:6}%;top:0;height:100%;border-radius:6px;background:${r.kind==='gate'?'var(--purple)':'linear-gradient(90deg,#6ea8ff,#cfa9ff)'}"></div>
+            <span class="small muted" style="position:absolute;left:${Math.min(pct(r.date)+2,78)}%;top:0">${esc(r.date)}</span>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+async function renderTimeReport() {
+  const t = await api('/timereport');
+  const dels = await api('/deliverables');
+  const delOptions = dels.map(d => `<option value="${esc(d.id)}">${esc(d.id)} ${esc(d.title)}</option>`).join('');
+  app.innerHTML = `
+    <h2>Time Reporting</h2>
+    <div class="sub">Hours booked per deliverable and owner</div>
+    <div class="grid two-col">
+      <div class="panel">
+        <h3>Hours by owner</h3>
+        <table><tr><th>Owner</th><th>Hours</th><th>Entries</th></tr>
+        ${Object.entries(t.by_owner).map(([o, v]) => `<tr><td>${esc(o)}</td><td>${v.hours.toFixed(1)}</td><td>${v.items}</td></tr>`).join('')}
+        </table>
+      </div>
+      <div class="panel">
+        <h3>Log hours</h3>
+        <label class="small muted">Deliverable</label><select id="trDel" style="width:100%">${delOptions}</select>
+        <label class="small muted" style="margin-top:8px">Owner</label><input id="trOwner" style="width:100%" placeholder="Name">
+        <label class="small muted" style="margin-top:8px">Hours</label><input id="trHours" type="number" step="0.5" style="width:100%" value="1">
+        <label class="small muted" style="margin-top:8px">Week (e.g. 2026-W44)</label><input id="trWeek" style="width:100%" placeholder="2026-W44">
+        <div style="margin-top:10px"><button class="btn" onclick="addTime()">Add entry</button></div>
+        <div id="trResult" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>Entries</h3>
+      <table><tr><th>ID</th><th>Deliverable</th><th>Owner</th><th>Hours</th><th>Week</th></tr>
+      ${t.entries.map(e => `<tr><td class="small">${esc(e.id)}</td><td class="small">${esc(e.deliverable_id)} ${esc(e.deliverable_title || '')}</td><td>${esc(e.owner)}</td><td>${e.hours}</td><td class="small">${esc(e.week)}</td></tr>`).join('')}
+      </table>
+    </div>`;
+}
+async function addTime() {
+  const res = await api('/timereport/add', 'POST', {
+    deliverable_id: document.getElementById('trDel').value,
+    owner: document.getElementById('trOwner').value,
+    hours: parseFloat(document.getElementById('trHours').value),
+    week: document.getElementById('trWeek').value,
+  });
+  const out = document.getElementById('trResult');
+  if (res.ok) { out.textContent = 'Logged ' + res.id; out.style.color = 'var(--green)'; setTimeout(render, 400); }
+  else { out.textContent = 'Error'; out.style.color = 'var(--red)'; }
+}
+async function renderSettings() {
+  const mods = await api('/modules');
+  app.innerHTML = `
+    <h2>Settings</h2>
+    <div class="sub">App store & Excel import</div>
+    <div class="panel" style="margin-bottom:16px">
+      <h3>App store — enable or disable modules</h3>
+      <table><tr><th>Module</th><th>Enabled</th></tr>
+      ${mods.map(m => `<tr><td>${esc(m.label)}</td>
+        <td><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="toggleModule('${m.name}', this.checked)"></td></tr>`).join('')}
+      </table>
+    </div>
+    <div class="grid two-col">
+      <div class="panel">
+        <h3>Import deliverables (.xlsx)</h3>
+        <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, workstream_id, owner, gate_id, state, due_date, evidence_ref, dependency_ids. First row = header.</div>
+        <input type="file" id="impDeliv" accept=".xlsx">
+        <div style="margin-top:10px"><button class="btn" onclick="importXlsx('deliverables')">Import deliverables</button></div>
+        <div id="impDelivResult" class="small" style="margin-top:8px"></div>
+      </div>
+      <div class="panel">
+        <h3>Import decisions (.xlsx)</h3>
+        <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, owner, raised_date, needed_by, status, blocks. First row = header.</div>
+        <input type="file" id="impDec" accept=".xlsx">
+        <div style="margin-top:10px"><button class="btn" onclick="importXlsx('decisions')">Import decisions</button></div>
+        <div id="impDecResult" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>`;
+}
+async function toggleModule(name, enabled) {
+  await api('/modules/toggle', 'POST', { name, enabled });
+  loadModules();
+}
+async function importXlsx(kind) {
+  const input = document.getElementById(kind === 'deliverables' ? 'impDeliv' : 'impDec');
+  const out = document.getElementById(kind === 'deliverables' ? 'impDelivResult' : 'impDecResult');
+  if (!input.files[0]) { out.textContent = 'Choose an .xlsx file first.'; out.style.color = 'var(--red)'; return; }
+  const buf = await input.files[0].arrayBuffer();
+  let bin = ''; const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  out.textContent = 'Uploading…'; out.style.color = 'var(--muted)';
+  const res = await api('/import', 'POST', { kind, file: btoa(bin) });
+  if (res.error) { out.textContent = 'Error: ' + res.error; out.style.color = 'var(--red)'; }
+  else { out.textContent = `Imported ${res.imported} rows from sheet "${res.sheet}" (${res.skipped} skipped).`; out.style.color = 'var(--green)'; }
+}
 async function addColumn() {
   const label = prompt('New column name (e.g. "Waiting for vendor"):');
   if (!label || !label.trim()) return;
@@ -469,7 +590,7 @@ async function deleteColumn(id) {
 }
 function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
 document.getElementById('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
-render();
+loadModules().then(render);
 </script>
 </body>
 </html>
