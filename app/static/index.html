@@ -164,6 +164,8 @@
   .kb-meta { display: flex; justify-content: space-between; gap: 6px; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
   .kb-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 2px 5px; border-radius: 6px; }
   .kb-del:hover { color: var(--red); background: rgba(255,125,120,.14); }
+  .rowmenu .menu-item { display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px; }
+  .rowmenu .menu-item:hover { background: rgba(255,255,255,.1); }
 </style>
 </head>
 <body>
@@ -375,10 +377,10 @@ async function renderRegister() {
   const stateOptions = cols.map(c => `<option value="${esc(c.id)}">${esc(c.label)}</option>`).join('');
   app.innerHTML = `
     <h2>Deliverables Register</h2>
-    <div class="sub">Every deliverable, owned and gated · slippage flagged while correction is cheap</div>
+    <div class="sub">Every deliverable, owned and gated · use ⋮ on a row to send it to a task app or share it</div>
     <div class="panel">
       <table>
-        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th>Task app</th></tr>
+        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th></th></tr>
         ${dels.map(d => `<tr>
           <td class="small">${esc(d.id)}</td><td>${esc(d.title)}<div class="small muted">${esc(d.description)}</div></td>
           <td class="small">${esc(wsName[d.workstream_id] || d.workstream_id)}</td><td>${esc(d.owner)}</td>
@@ -387,11 +389,36 @@ async function renderRegister() {
           <td class="small">${esc(d.due_date)}</td>
           <td class="small">${esc(JSON.parse(d.dependency_ids).join(', ') || '—')}</td>
           <td class="small muted">${esc(d.evidence_ref || 'none cited')}</td>
-          <td><select onchange="if(this.value)sendToTaskApp(this.value,'${d.id}')"><option value="">Send to…</option><option value="google_tasks">Google Tasks</option><option value="ms_todo">MS To Do</option><option value="todoist">Todoist</option></select></td></tr>`).join('')}
+          <td style="position:relative"><button class="kb-del" style="font-size:15px" title="Actions" onclick="openRowMenu(event, '${d.id}')">⋮</button>
+            <div class="rowmenu" id="rm_${d.id}" style="display:none;position:absolute;right:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:190px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:25">
+              <div class="small muted" style="padding:4px 8px">Send to task app</div>
+              <button class="menu-item" onclick="sendToTaskApp('google_tasks','${d.id}');closeRowMenus()">Google Tasks</button>
+              <button class="menu-item" onclick="sendToTaskApp('ms_todo','${d.id}');closeRowMenus()">Microsoft To Do</button>
+              <button class="menu-item" onclick="sendToTaskApp('todoist','${d.id}');closeRowMenus()">Todoist</button>
+              <div style="border-top:1px solid var(--glass-border);margin:4px 0"></div>
+              <button class="menu-item" onclick="shareDeliverable('${d.id}');closeRowMenus()">🔗 Share…</button>
+            </div></td></tr>`).join('')}
       </table>
     </div>`;
 }
 async function updDel(id, state) { await api('/deliverables/update', 'POST', { id, state }); if (currentView === 'dashboard') renderDashboard(); }
+function openRowMenu(e, id) {
+  e.stopPropagation();
+  const m = document.getElementById('rm_' + id);
+  const wasOpen = m.style.display === 'block';
+  closeRowMenus();
+  if (!wasOpen) m.style.display = 'block';
+}
+function closeRowMenus() { document.querySelectorAll('.rowmenu').forEach(m => m.style.display = 'none'); }
+document.addEventListener('click', () => closeRowMenus());
+async function shareDeliverable(id) {
+  const res = await api('/share/create', 'POST', { deliverable_id: id });
+  if (res.ok) {
+    const url = location.origin + res.url;
+    try { await navigator.clipboard.writeText(url); alert('Share link copied to clipboard: ' + url); }
+    catch { prompt('Share link:', url); }
+  } else alert('Share failed: ' + (res.error || 'unknown'));
+}
 const STATE_PILL_CLS = { not_started: 'p-gray', in_progress: 'p-amber', in_review: 'p-purple', blocked: 'p-red', verified: 'p-green' };
 async function renderKanban() {
   const [dels, ws, cols] = await Promise.all([api('/deliverables'), api('/workstreams'), api('/kanban/columns')]);
@@ -640,7 +667,7 @@ async function renderTaskAppsSettings() {
   return `
       <div class="panel">
         <h3>Task apps — send deliverables to external task managers</h3>
-        <div class="small muted" style="margin-bottom:12px">Enable a provider and paste its API token. Deliverables can then be pushed from the Register via the "Send to" menu. Tokens are stored locally in the Hub database only.</div>
+        <div class="small muted" style="margin-bottom:12px">Enable a provider and paste its API token. Deliverables can then be pushed from the Register via the ⋮ row menu. Tokens are stored locally in the Hub database only.</div>
         ${TASK_APPS.map(([p, label, hint]) => `
           <div style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin-bottom:10px">
             <label style="font-weight:700">${label}</label>
