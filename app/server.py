@@ -63,6 +63,90 @@ def gate_readiness(db, gate_id):
     return {"gate_id": gate_id, "total": len(items), "verified": verified, "pct": pct, "items": items}
 
 
+BAND_SCORE = {"green": 100, "amber": 60, "red": 20}
+BAND_ORDER = ["green", "amber", "red"]
+
+def _eval_thresholds(measure_type, value, thresholds):
+    """Return 'green'|'amber'|'red'. Unmeasured (empty value/source) -> red. Boolean has no amber."""
+    if value in (None, ""):
+        return "red"
+    th = json.loads(thresholds) if isinstance(thresholds, str) else thresholds
+    def num(v):
+        try: return float(v)
+        except Exception: return None
+    v = num(value)
+    bool_val = str(value).strip().lower() in ("true", "yes", "1")
+    if measure_type == "boolean":
+        return "green" if bool_val else "red"
+    if v is None:
+        return "red"
+    for band in ("green", "amber", "red"):
+        expr = th.get(band)
+        if not expr:
+            continue
+        m = re.match(r"(==|>=|<=|>|<|=)\s*(.+)", expr.strip())
+        if not m:
+            continue
+        op, rhs = m.group(1), m.group(2)
+        r = num(rhs)
+        if r is None:
+            continue
+        ok = {"==": v == r, "=": v == r, ">=": v >= r, "<=": v <= r, ">": v > r, "<": v < r}[op]
+        if ok:
+            return band
+    return "red"
+
+
+def mrf_compute(db, gate_id, stale_days=7):
+    """Milestone Readiness Framework: compute band/score/outcome server-side from evidence only."""
+    dims = rows(db.execute("SELECT * FROM mrf_dimensions ORDER BY position"))
+    crits = rows(db.execute("SELECT * FROM mrf_criteria ORDER BY id"))
+    ev = {r["criterion_id"]: dict(r) for r in db.execute("SELECT * FROM mrf_evidence WHERE gate_id=?", (gate_id,))}
+    today = date.today()
+    dim_out = []
+    for d in dims:
+        crit_out = []
+        for c in [x for x in crits if x["dimension_id"] == d["id"]]:
+            e = ev.get(c["id"], {})
+            value, as_at, source = e.get("value", ""), e.get("as_at", ""), e.get("source", "")
+            band = _eval_thresholds(c["measure_type"], value, c["thresholds"]) if value else "red"
+            if not source:
+                band = "red"
+            stale = False
+            if as_at:
+                try:
+                    stale = (today - date.fromisoformat(as_at)).days > stale_days
+                except ValueError:
+                    stale = True
+            if stale and band in BAND_ORDER:
+                band = BAND_ORDER[min(BAND_ORDER.index(band) + 1, 2)]
+            crit_out.append({"id": c["id"], "statement": c["statement"], "measure_type": c["measure_type"],
+                             "target": c["target"], "value": value, "as_at": as_at, "source": source or c["source"],
+                             "band": band, "score": BAND_SCORE[band], "stale": stale, "override": e.get("override", "")})
+        dim_score = round(sum(c["score"] for c in crit_out) / len(crit_out)) if crit_out else 20
+        dim_band = "green" if dim_score >= 85 else "amber" if dim_score >= 55 else "red"
+        dim_out.append({"id": d["id"], "name": d["name"], "weight": d["weight"], "score": dim_score,
+                        "band": dim_band, "criteria": crit_out})
+    score = round(sum(d["score"] * d["weight"] for d in dim_out) / 100) if dim_out else 0
+    band = "green" if score >= 85 else "amber" if score >= 55 else "red"
+    all_green = all(d["band"] == "green" for d in dim_out)
+    no_red = all(d["band"] != "red" for d in dim_out)
+    high_open = sum(1 for d in dim_out for c in d["criteria"] if c["id"].startswith("D8") and c["band"] == "red")
+    acceptance = next((c for d in dim_out if d["id"] == "D6" for c in d["criteria"]), None)
+    accepted = bool(acceptance and acceptance["band"] == "green")
+    if score >= 85 and all_green and high_open == 0 and accepted:
+        outcome = "READY"
+    elif score >= 75 and no_red:
+        outcome = "CONDITIONAL"
+    else:
+        outcome = "NOT READY"
+    stale_count = sum(1 for d in dim_out for c in d["criteria"] if c["stale"] or (not c["value"]))
+    oldest = min((c["as_at"] for d in dim_out for c in d["criteria"] if c["as_at"]), default="")
+    return {"gate_id": gate_id, "score": score, "band": band, "outcome": outcome,
+            "dimensions": dim_out, "stale_count": stale_count, "oldest_as_at": oldest,
+            "computed_at": today.isoformat()}
+
+
 def build_dashboard(db):
     today = date.today().isoformat()
     next_gate = db.execute("SELECT * FROM gates WHERE status IN ('upcoming','in_progress') ORDER BY scheduled_date LIMIT 1").fetchone()
@@ -83,9 +167,11 @@ def build_dashboard(db):
         attention.append(f"Blocked deliverable {d['id']}: {d['title']} (owner: {d['owner']})")
     projects = rows(db.execute("SELECT p.*, (SELECT COUNT(*) FROM deliverables d WHERE d.project_id = p.id) AS deliverable_count FROM projects p ORDER BY p.start_date"))
     pl = db.execute("SELECT light FROM program_settings WHERE id=1").fetchone()
+    mrf_next = mrf_compute(db, next_gate["id"]) if next_gate else None
     return {
         "today": today,
         "program_light": pl["light"] if pl else "green",
+        "mrf": mrf_next,
         "projects": projects,
         "next_gate": dict(next_gate) if next_gate else None,
         "next_gate_readiness": readiness,
@@ -109,6 +195,8 @@ def build_briefing(db):
             forecast.append(f"{g['id']} ({g['name']}) at {r['pct']}% evidence readiness - on track with conditions")
         else:
             forecast.append(f"{g['id']} ({g['name']}) at {r['pct']}% evidence readiness - gate-ready")
+        if dash["mrf"]:
+            forecast.append(f"MRF computed readiness {dash['mrf']['score']}/100 ({dash['mrf']['band']}) -> recommended outcome {dash['mrf']['outcome']}")
     return {"generated": dash["today"], "next_gate": g, "readiness": dash["next_gate_readiness"], "attention": dash["attention"],
             "open_conditions": conditions, "open_decisions": decisions, "raid_movement": raid_movement, "forecast": forecast}
 
@@ -407,6 +495,7 @@ class Handler(BaseHTTPRequestHandler):
                 out["conditions"] = rows(db.execute("SELECT * FROM conditions WHERE gate_id=? ORDER BY due_date", (gid,)))
                 rep = db.execute("SELECT * FROM gate_reports WHERE gate_id=?", (gid,)).fetchone()
                 out["report_config"] = dict(rep) if rep else {"gate_id": gid, "logo": "", "logo_name": "", "front_title": "", "front_description": ""}
+                out["mrf"] = mrf_compute(db, gid)
                 return self._send(200, out)
             if path.startswith("/api/gates/"):
                 gid = path.split("/")[-1]
@@ -462,6 +551,16 @@ class Handler(BaseHTTPRequestHandler):
                     "projects": rows(db.execute("SELECT * FROM projects ORDER BY start_date")),
                     "program_light": db.execute("SELECT light FROM program_settings WHERE id=1").fetchone()["light"],
                 })
+            if path == "/api/readiness":
+                out = {}
+                for g in db.execute("SELECT id FROM gates"):
+                    out[g["id"]] = mrf_compute(db, g["id"])
+                return self._send(200, out)
+            if path.startswith("/api/readiness/"):
+                gid = path.split("/")[-1]
+                if not db.execute("SELECT id FROM gates WHERE id=?", (gid,)).fetchone():
+                    return self._send(404, {"error": "gate not found"})
+                return self._send(200, mrf_compute(db, gid))
             if path == "/api/agents":
                 return self._send(200, rows(db.execute("SELECT * FROM ai_agents ORDER BY position")))
             if path == "/api/taskapps":
@@ -531,6 +630,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {"error": "logo too large (max ~300KB)"})
                 db.execute("INSERT INTO gate_reports (gate_id, logo, logo_name, front_title, front_description) VALUES (?,?,?,?,?) ON CONFLICT(gate_id) DO UPDATE SET logo=excluded.logo, logo_name=excluded.logo_name, front_title=excluded.front_title, front_description=excluded.front_description",
                            (gid, logo, body.get("logo_name", ""), body.get("front_title", ""), body.get("front_description", "")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/readiness/evidence":
+                db.execute("INSERT INTO mrf_evidence (gate_id, criterion_id, value, as_at, source, override) VALUES (?,?,?,?,?,?) ON CONFLICT(gate_id, criterion_id) DO UPDATE SET value=excluded.value, as_at=excluded.as_at, source=excluded.source, override=excluded.override",
+                           (body.get("gate_id"), body.get("criterion_id"), str(body.get("value", "")), body.get("as_at", date.today().isoformat()), body.get("source", ""), body.get("override", "")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/light/project":
