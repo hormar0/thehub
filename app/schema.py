@@ -118,6 +118,16 @@ CREATE TABLE IF NOT EXISTS doc_repo (
     enabled INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS ai_agents (
+    name TEXT PRIMARY KEY,
+    role TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    grounding TEXT NOT NULL DEFAULT '',
+    accuracy_gate REAL NOT NULL DEFAULT 90.0,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    position INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS evidence (
     id TEXT PRIMARY KEY,
     deliverable_id TEXT NOT NULL REFERENCES deliverables(id),
@@ -274,6 +284,7 @@ def seed(db: sqlite3.Connection):
         ("gantt", "Gantt Chart", 1),
         ("kanban", "Kanban", 1),
         ("timereport", "Time Reporting", 1),
+        ("agents", "AI Agents", 1),
     ])
 
     time_entries = [
@@ -302,6 +313,21 @@ def seed(db: sqlite3.Connection):
     ])
 
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
+
+    cur.executemany("INSERT INTO ai_agents VALUES (?,?,?,?,?,?,?)", [
+        ("Program Pulse", "Status & forecasting", "PMO", "SAP Cloud ALM, register, minutes", 90, 1, 0),
+        ("Status Drafter", "Consolidated reporting", "PMO", "Register, RAID, gate outcomes", 90, 1, 1),
+        ("Executive Briefing", "Decision packs for the Gate Chair", "Gate Chair office", "Briefing pack, evidence record", 92, 1, 2),
+        ("Health Predictor", "Trajectory warnings", "PMO", "Time entries, RAID, gate history", 88, 1, 3),
+        ("RAID Extractor", "Risks & issues from the record", "PMO", "Minutes, tickets, test results", 90, 1, 4),
+        ("Decision Log Keeper", "Open decisions & latency", "PMO", "Decision logs, mail", 90, 1, 5),
+        ("Evidence Auditor", "Completeness vs exit criteria", "QA", "Evidence store, register", 95, 1, 6),
+        ("Document Finder", "Live version, cited", "PMO", "Teams / SharePoint doc repo", 90, 1, 7),
+        ("Metadata Structurer", "Register agents can trust", "Data team", "Register, schema registry", 93, 1, 8),
+        ("Template Guardian", "Deviation & reuse checks", "Methodology", "Playbooks, templates", 90, 1, 9),
+        ("SAP Best Practices", "Fit-to-standard guidance & BP catalog lookup", "SAP lead", "SAP Best Practices explorer, BP content", 92, 1, 10),
+        ("Localization Advisor", "Country/language requirements & translation readiness", "Change lead", "Localization playbooks, legal reqs", 90, 1, 11),
+    ])
 
     db.commit()
 
