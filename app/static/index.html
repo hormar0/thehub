@@ -189,6 +189,7 @@
     <button class="menu-item" id="menuProgram" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">▤ Program &amp; projects</button>
     <button class="menu-item" id="menuRepo" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☁ Document repository</button>
     <button class="menu-item" id="menuAgents" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">🤖 AI agents</button>
+    <button class="menu-item" id="menuTaskapps" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☑ Task apps</button>
   </div>
 </header>
 <main id="app"></main>
@@ -252,6 +253,7 @@ document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click',
   else if (b.id === 'menuProgram') settingsTab = 'program';
   else if (b.id === 'menuRepo') settingsTab = 'repo';
   else if (b.id === 'menuAgents') settingsTab = 'agents';
+  else if (b.id === 'menuTaskapps') settingsTab = 'taskapps';
   else settingsTab = 'store';
   currentView = 'settings'; render();
 }));
@@ -376,7 +378,7 @@ async function renderRegister() {
     <div class="sub">Every deliverable, owned and gated · slippage flagged while correction is cheap</div>
     <div class="panel">
       <table>
-        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th></tr>
+        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th>Task app</th></tr>
         ${dels.map(d => `<tr>
           <td class="small">${esc(d.id)}</td><td>${esc(d.title)}<div class="small muted">${esc(d.description)}</div></td>
           <td class="small">${esc(wsName[d.workstream_id] || d.workstream_id)}</td><td>${esc(d.owner)}</td>
@@ -384,7 +386,8 @@ async function renderRegister() {
           <td><select onchange="updDel('${d.id}', this.value)">${stateOptions.replace(`value="${d.state}"`, `value="${d.state}" selected`)}</select></td>
           <td class="small">${esc(d.due_date)}</td>
           <td class="small">${esc(JSON.parse(d.dependency_ids).join(', ') || '—')}</td>
-          <td class="small muted">${esc(d.evidence_ref || 'none cited')}</td></tr>`).join('')}
+          <td class="small muted">${esc(d.evidence_ref || 'none cited')}</td>
+          <td><select onchange="if(this.value)sendToTaskApp(this.value,'${d.id}')"><option value="">Send to…</option><option value="google_tasks">Google Tasks</option><option value="ms_todo">MS To Do</option><option value="todoist">Todoist</option></select></td></tr>`).join('')}
       </table>
     </div>`;
 }
@@ -626,13 +629,51 @@ async function addAgent() {
   if (res.ok) render();
   else alert(res.error || 'Error');
 }
+const TASK_APPS = [
+  ['google_tasks', 'Google Tasks', 'OAuth token with tasks scope; tasklist id optional (default list)'],
+  ['ms_todo', 'Microsoft To Do', 'Microsoft Graph token with Tasks.ReadWrite; list id (default = default list)'],
+  ['todoist', 'Todoist', 'API token from todoist.com; project id optional'],
+];
+async function renderTaskAppsSettings() {
+  const apps = await api('/taskapps');
+  const byP = Object.fromEntries(apps.map(a => [a.provider, a]));
+  return `
+      <div class="panel">
+        <h3>Task apps — send deliverables to external task managers</h3>
+        <div class="small muted" style="margin-bottom:12px">Enable a provider and paste its API token. Deliverables can then be pushed from the Register via the "Send to" menu. Tokens are stored locally in the Hub database only.</div>
+        ${TASK_APPS.map(([p, label, hint]) => `
+          <div style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin-bottom:10px">
+            <label style="font-weight:700">${label}</label>
+            <div class="small muted" style="margin:4px 0 8px">${hint}</div>
+            <label class="small muted"><input type="checkbox" id="ta_${p}_en" ${byP[p] && byP[p].enabled ? 'checked' : ''} onchange="saveTaskApp('${p}')"> Enabled</label>
+            <input id="ta_${p}_token" type="password" placeholder="API token" style="width:100%;margin-top:6px" onblur="saveTaskApp('${p}')">
+            <input id="ta_${p}_list" placeholder="List / project ID (optional)" style="width:100%;margin-top:6px" value="${esc((byP[p] && byP[p].list_id) || '')}" onblur="saveTaskApp('${p}')">
+          </div>`).join('')}
+        <div id="taStatus" class="small" style="margin-top:6px;color:var(--green)"></div>
+      </div>`;
+}
+async function saveTaskApp(provider) {
+  await api('/taskapps/save', 'POST', {
+    provider,
+    enabled: document.getElementById('ta_' + provider + '_en').checked,
+    token: document.getElementById('ta_' + provider + '_token').value,
+    list_id: document.getElementById('ta_' + provider + '_list').value,
+  });
+  document.getElementById('taStatus').textContent = 'Saved ' + provider;
+}
+async function sendToTaskApp(provider, delivId) {
+  const res = await api('/taskapps/send', 'POST', { provider, deliverable_id: delivId });
+  if (res.ok) alert('Sent to ' + provider + ' (remote id: ' + (res.remote.id || 'ok') + ')');
+  else alert('Send failed: ' + (res.error || 'unknown error'));
+}
 const SETTINGS_TABS = [
-  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'],
+  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['taskapps', 'Task apps'],
 ];
 async function renderSettings() {
   const mods = await api('/modules');
   const prog = await api('/program');
   const agentsPanel = settingsTab === 'agents' ? await renderAgentsSettings() : '';
+  const taskappsPanel = settingsTab === 'taskapps' ? await renderTaskAppsSettings() : '';
   const SAP_PHASES = ['Discover', 'Prepare', 'Explore', 'Realize', 'Deploy', 'Run'];
   app.innerHTML = `
     <h2>Settings</h2>
@@ -715,6 +756,7 @@ async function renderSettings() {
         <div id="repoStatus" class="small" style="margin-top:10px;color:var(--green)"></div>
       </div>` : ''}
     ${settingsTab === 'agents' ? agentsPanel : ''}
+    ${settingsTab === 'taskapps' ? taskappsPanel : ''}
   `;
 }
 async function addPhase() {
