@@ -13,28 +13,17 @@ bash install.sh
 # open http://127.0.0.1:8080 in your browser
 ```
 
-`install.sh` installs python3 if missing, starts the server, and opens the URL via `termux-open-url` when available.
-
-## Run on Termux — update to latest
+## Run on Termux — ONE-COMMAND UPDATE
 
 ```bash
-cd ~/thehub
-git fetch origin
-git checkout vibe/milestone-hub-c4557a
-git pull origin vibe/milestone-hub-c4557a
-# restart the server:
-pkill -f "python3 server.py" 2>/dev/null; sleep 1
-bash install.sh
+bash ~/thehub/update.sh
 ```
 
-Or in one line:
+That single command fetches the latest code, pulls the branch, restarts the server, and re-opens the app. (Optional arg: `bash ~/thehub/update.sh main` after the PR is merged.)
+
+Long form, if you prefer:
 ```bash
 cd ~/thehub && git fetch origin && git checkout vibe/milestone-hub-c4557a && git pull origin vibe/milestone-hub-c4557a && pkill -f "python3 server.py" 2>/dev/null; sleep 1; bash install.sh
-```
-
-If the app was merged to `main`, switch to that instead:
-```bash
-cd ~/thehub && git checkout main && git pull origin main && pkill -f "python3 server.py" 2>/dev/null; sleep 1; bash install.sh
 ```
 
 ## Run anywhere else
