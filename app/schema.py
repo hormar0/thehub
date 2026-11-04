@@ -176,7 +176,8 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL,
     email TEXT NOT NULL DEFAULT '',
     phone TEXT NOT NULL DEFAULT '',
-    project_id TEXT NOT NULL DEFAULT ''
+    project_id TEXT NOT NULL DEFAULT '',
+    skills TEXT NOT NULL DEFAULT ''          -- comma-separated skills for allocation grid search
 );
 
 CREATE TABLE IF NOT EXISTS gate_reports (
@@ -402,6 +403,11 @@ def seed(db: sqlite3.Connection):
         ("kanban", "Kanban", 1),
         ("timereport", "Time Reporting", 1),
         ("agents", "AI Agents", 1),
+        ("invoicing", "Invoicing (placeholder)", 0),
+        ("bookkeeping", "Bookkeeping integration (placeholder)", 0),
+        ("projaccounting", "Project accounting (placeholder)", 0),
+        ("consolidation", "Consolidation (placeholder)", 0),
+        ("allocation", "Resource allocation grid", 1),
     ])
 
     time_entries = [
@@ -437,13 +443,13 @@ def seed(db: sqlite3.Connection):
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
     cur.execute("INSERT OR IGNORE INTO program_settings VALUES (1, 'green', 'deliverables')")
 
-    cur.executemany("INSERT OR IGNORE INTO users VALUES (?,?,?,?,?)", [
-        ("areinhart", "A. Reinhart", "a.reinhart@example.com", "+46 70 111 22 33", "PRJ-01"),
-        ("mokafor", "M. Okafor", "m.okafor@example.com", "+44 7700 900 123", "PRJ-01"),
-        ("slindqvist", "S. Lindqvist", "s.lindqvist@example.com", "+46 70 444 55 66", "PRJ-02"),
-        ("lmoreau", "L. Moreau", "l.moreau@example.com", "+33 6 12 34 56 78", "PRJ-02"),
-        ("dpetrov", "D. Petrov", "d.petrov@example.com", "+385 91 234 5678", "PRJ-03"),
-        ("rcastellanos", "R. Castellanos", "r.castellanos@example.com", "+1 415 555 0132", ""),
+    cur.executemany("INSERT OR IGNORE INTO users VALUES (?,?,?,?,?,?)", [
+        ("areinhart", "A. Reinhart", "a.reinhart@example.com", "+46 70 111 22 33", "PRJ-01", "SAP S/4, Finance, Process design"),
+        ("mokafor", "M. Okafor", "m.okafor@example.com", "+44 7700 900 123", "PRJ-01", "Integration, APIs, EDI"),
+        ("slindqvist", "S. Lindqvist", "s.lindqvist@example.com", "+46 70 444 55 66", "PRJ-02", "Data migration, SQL, Data quality"),
+        ("lmoreau", "L. Moreau", "l.moreau@example.com", "+33 6 12 34 56 78", "PRJ-02", "OCM, Training, Localization"),
+        ("dpetrov", "D. Petrov", "d.petrov@example.com", "+385 91 234 5678", "PRJ-03", "Cutover, Testing, PMO"),
+        ("rcastellanos", "R. Castellanos", "r.castellanos@example.com", "+1 415 555 0132", "", "PMO, Governance, Steering"),
     ])
 
     cur.executemany("INSERT OR IGNORE INTO task_integrations VALUES (?,?,?,?)", [

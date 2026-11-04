@@ -595,6 +595,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not db.execute("SELECT id FROM gates WHERE id=?", (gid,)).fetchone():
                     return self._send(404, {"error": "gate not found"})
                 return self._send(200, mrf_compute(db, gid))
+            if path == "/api/allocation":
+                users = rows(db.execute("SELECT u.*, p.name AS project_name FROM users u LEFT JOIN projects p ON p.id = u.project_id ORDER BY u.username"))
+                hours = {}
+                for e in db.execute("SELECT owner, project_id, SUM(hours) h FROM time_entries GROUP BY owner, project_id"):
+                    hours[(e["owner"], e["project_id"])] = e["h"]
+                projects = rows(db.execute("SELECT * FROM projects ORDER BY id"))
+                return self._send(200, {"users": users, "projects": projects, "hours": {f"{k[0]}|{k[1]}": v for k, v in hours.items()}})
             if path == "/api/wbs":
                 return self._send(200, rows(db.execute("SELECT * FROM wbs ORDER BY project_id, code")))
             if path == "/api/reportmode":
@@ -734,15 +741,15 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {"error": "username required"})
                 if db.execute("SELECT username FROM users WHERE username=?", (un,)).fetchone():
                     return self._send(400, {"error": "username taken"})
-                db.execute("INSERT INTO users VALUES (?,?,?,?,?)", (un, body.get("name"), body.get("email", ""), body.get("phone", ""), body.get("project_id", "")))
+                db.execute("INSERT INTO users VALUES (?,?,?,?,?,?)", (un, body.get("name"), body.get("email", ""), body.get("phone", ""), body.get("project_id", ""), body.get("skills", "")))
                 db.commit()
                 return self._send(200, {"ok": True, "username": un})
             if path == "/api/users/update":
                 un = body.get("username")
                 if not db.execute("SELECT username FROM users WHERE username=?", (un,)).fetchone():
                     return self._send(404, {"error": "user not found"})
-                db.execute("UPDATE users SET name=?, email=?, phone=?, project_id=? WHERE username=?",
-                           (body.get("name"), body.get("email", ""), body.get("phone", ""), body.get("project_id", ""), un))
+                db.execute("UPDATE users SET name=?, email=?, phone=?, project_id=?, skills=? WHERE username=?",
+                           (body.get("name"), body.get("email", ""), body.get("phone", ""), body.get("project_id", ""), body.get("skills", ""), un))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/kanban/columns/add":

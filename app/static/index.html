@@ -188,6 +188,11 @@
     <button data-view="roadmap">Roadmap</button>
     <button data-view="timereport">Time Report</button>
     <button data-view="wbs">WBS</button>
+    <button data-view="allocation">Allocation</button>
+    <button data-view="invoicing">Invoicing</button>
+    <button data-view="bookkeeping">Bookkeeping</button>
+    <button data-view="projaccounting">Proj. Accounting</button>
+    <button data-view="consolidation">Consolidation</button>
     <button data-view="agents">AI Agents</button>
     <button data-view="briefing">Briefing Pack</button>
   </nav>
@@ -255,7 +260,7 @@ function condPill(s) {
 async function loadModules() {
   const mods = await api('/modules');
   moduleMap = Object.fromEntries(mods.map(m => [m.name, m]));
-  const viewFor = { decisions: 'ledger', risks: 'raid', gantt: 'gantt', kanban: 'kanban', timereport: 'timereport', agents: 'agents' };
+  const viewFor = { decisions: 'ledger', risks: 'raid', gantt: 'gantt', kanban: 'kanban', timereport: 'timereport', agents: 'agents', allocation: 'allocation', invoicing: 'invoicing', bookkeeping: 'bookkeeping', projaccounting: 'projaccounting', consolidation: 'consolidation' };
   document.querySelectorAll('#nav button').forEach(b => {
     const mod = Object.keys(viewFor).find(k => viewFor[k] === b.dataset.view);
     if (mod) b.style.display = moduleMap[mod] && moduleMap[mod].enabled ? '' : 'none';
@@ -299,6 +304,11 @@ async function render() {
   if (currentView === 'roadmap') return renderRoadmap();
   if (currentView === 'timereport') return renderTimeReport();
   if (currentView === 'wbs') return renderWbs();
+  if (currentView === 'allocation') return renderAllocation();
+  if (currentView === 'invoicing') return renderPlaceholder('invoicing');
+  if (currentView === 'bookkeeping') return renderPlaceholder('bookkeeping');
+  if (currentView === 'projaccounting') return renderPlaceholder('projaccounting');
+  if (currentView === 'consolidation') return renderPlaceholder('consolidation');
   if (currentView === 'agents') return renderAgents();
 }
 function lightDot(l, lg) { return `<span class="tl tl-${esc(l||'green')}${lg?' tl-lg':''}" title="${esc(l||'green')}"></span>`; }
@@ -879,13 +889,14 @@ async function renderUsersSettings(projects) {
   return `
       <div class="panel">
         <h3>Users</h3>
-        <table><tr><th>Username</th><th>Name</th><th>Email</th><th>Phone</th><th>Project</th></tr>
+        <table><tr><th>Username</th><th>Name</th><th>Email</th><th>Phone</th><th>Project</th><th>Skills</th></tr>
         ${users.map(u => `<tr>
           <td class="small">${esc(u.username)}</td>
           <td><input value="${esc(u.name)}" onchange="updUser('${u.username}', 'name', this.value)"></td>
           <td><input value="${esc(u.email)}" onchange="updUser('${u.username}', 'email', this.value)"></td>
           <td><input value="${esc(u.phone)}" onchange="updUser('${u.username}', 'phone', this.value)"></td>
           <td><select onchange="updUser('${u.username}', 'project_id', this.value)"><option value="">—</option>${projOptions.replace(`value="${u.project_id}"`, `value="${u.project_id}" selected`)}</select></td>
+          <td><input value="${esc(u.skills || '')}" placeholder="SAP, SQL, OCM…" onchange="updUser('${u.username}', 'skills', this.value)"></td>
         </tr>`).join('')}
         </table>
         <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
@@ -900,7 +911,7 @@ async function renderUsersSettings(projects) {
 async function updUser(username, field, value) {
   const users = await api('/users');
   const u = users.find(x => x.username === username);
-  await api('/users/update', 'POST', { username, name: u.name, email: u.email, phone: u.phone, project_id: u.project_id, [field]: value });
+  await api('/users/update', 'POST', { username, name: u.name, email: u.email, phone: u.phone, project_id: u.project_id, skills: u.skills, [field]: value });
   document.getElementById('userStatus').textContent = 'Saved ' + username;
 }
 async function addUser() {
@@ -1149,6 +1160,44 @@ async function wbsAdd(projectId, parentId) {
   const end = prompt('End date (YYYY-MM-DD):') || '';
   const res = await api('/wbs/add', 'POST', { project_id: projectId, parent_id: parentId, code, name, start_date: start, end_date: end });
   if (res.ok) render();
+}
+
+
+const PLACEHOLDERS = {
+  invoicing: { title: 'Invoicing', desc: 'Placeholder module (app store). Planned: invoices per project, recurring T&M and fixed-fee schedules, bill on completion / milestone / date schedule — à la SuiteProjects billing. Not wired to financials yet.' },
+  bookkeeping: { title: 'Bookkeeping integration', desc: 'Placeholder module (app store). Planned: push invoices/entries to Fortnox, Visma eAccounting or similar via API + webhook; store credentials like task apps. Not wired yet.' },
+  projaccounting: { title: 'Project accounting', desc: 'Placeholder module (app store). Planned: link project activity (hours × rate, deliverable grades) to cost/revenue per project for budget-vs-actual and margin. Not wired yet.' },
+  consolidation: { title: 'Consolidation', desc: 'Placeholder module (app store). Planned: roll up multiple projects/subsidiaries into one program P&L and portfolio view, with currency handling. Not wired yet.' },
+};
+async function renderPlaceholder(key) {
+  const p = PLACEHOLDERS[key];
+  app.innerHTML = `
+    <h2>${p.title}</h2>
+    <div class="sub">Placeholder app — enable/disable in ☰ → App store</div>
+    <div class="panel" style="max-width:640px">
+      <p>${p.desc}</p>
+      <p class="muted small" style="margin-top:12px">This is a stub view. Data model hooks will land here when the module goes live.</p>
+    </div>`;
+}
+async function renderAllocation() {
+  const a = await api('/allocation');
+  const q = (document.getElementById('allocQ') ? document.getElementById('allocQ').value : (window._allocQ || '')).toLowerCase();
+  window._allocQ = q;
+  const users = a.users.filter(u => !q || (u.name + ' ' + u.username + ' ' + (u.skills || '')).toLowerCase().includes(q));
+  app.innerHTML = `
+    <h2>Resource allocation grid</h2>
+    <div class="sub">Skill search + people × projects. Search: <input id="allocQ" value="${esc(q)}" placeholder="skill or name…" oninput="window._allocQ=this.value;render()"></div>
+    <div class="panel" style="overflow-x:auto">
+      <table>
+        <tr><th>Person</th><th>Skills</th><th>Home project</th>${a.projects.map(p => `<th>${esc(p.id)}<div class="small muted">${esc(p.project_type)}</div></th>`).join('')}</tr>
+        ${users.map(u => `<tr>
+          <td><b>${esc(u.name)}</b><div class="small muted">${esc(u.username)} · ${esc(u.email)}</div></td>
+          <td class="small">${esc(u.skills || '—')}</td>
+          <td class="small">${esc(u.project_id || '—')}</td>
+          ${a.projects.map(p => `<td class="small">${(a.hours[u.name + '|' + p.id] || a.hours[u.username + '|' + p.id] || 0).toFixed(1)} h</td>`).join('')}
+        </tr>`).join('') || '<tr><td colspan="4" class="muted">No people match.</td></tr>'}
+      </table>
+    </div>`;
 }
 
 async function gradeDel(id, grade) { await api('/deliverables/grade', 'POST', { id, grade }); }
