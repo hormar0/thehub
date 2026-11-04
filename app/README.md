@@ -2,6 +2,19 @@
 
 Zero-dependency Python stdlib + SQLite backend and a Liquid Glass SPA for large Business Transformation programs: evidence-based gates, deliverables register, Kanban, decisions & conditions, RAID, briefing pack, Gantt, time reporting, AI agents, task-app integrations, share links.
 
+## Install on a NEW device (Android tablet / Termux) — installation pack
+
+One file does everything (clone, branch, deps, start, open browser):
+
+```bash
+pkg update -y && pkg install -y git python wget
+wget https://raw.githubusercontent.com/hormar0/thehub/vibe/milestone-hub-c4557a/install-pack.sh
+bash install-pack.sh
+# open http://127.0.0.1:8080 — landscape layout is tablet-optimised
+```
+
+Manual equivalent:
+
 ## Run on Termux (Android) — install
 
 ```bash
