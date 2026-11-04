@@ -188,7 +188,7 @@
     .two-col { grid-template-columns: 1fr 1fr; gap: 12px; }
     table { font-size: 12.5px; }
     td, th { padding: 7px 8px; }
-    .panel { overflow-x: auto; }
+    .panel table { display: block; overflow-x: auto; }
     h2 { font-size: 18px; }
   }
   /* Small tablets / portrait */
@@ -398,7 +398,7 @@ async function renderGates() {
           <div class="gdate">${esc(g.scheduled_date)} · readiness ${g.readiness.pct}%</div>
           <div style="margin-top:8px;position:relative;display:inline-block">
             <button class="kb-del" style="font-size:16px" title="Actions" onclick="openGateMenu(event, '${g.id}')">⋮</button>
-            <div class="rowmenu" id="gm_${g.id}" style="display:none;position:absolute;left:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:170px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:25">
+            <div class="rowmenu" id="gm_${g.id}" style="display:none;position:absolute;left:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:170px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:999">
               <button class="menu-item" onclick="openGate('${g.id}');closeGateMenus()">Details</button>
               <button class="menu-item" onclick="window.open('/report/${g.id}','_blank');closeGateMenus()">📄 Report</button>
               <button class="menu-item" onclick="customizeReport('${g.id}');closeGateMenus()">✎ Cover</button>
@@ -550,7 +550,7 @@ async function renderRegister() {
           <td><select onchange="assignDel('${d.id}', 'responsible_user', this.value)"><option value="">—</option>${userOptions.replace(`value="${d.responsible_user}"`, `value="${d.responsible_user}" selected`)}</select></td>
           <td><select onchange="assignDel('${d.id}', 'project_id', this.value)"><option value="">—</option>${projectOptions.replace(`value="${d.project_id}"`, `value="${d.project_id}" selected`)}</select></td>
           <td style="position:relative"><button class="kb-del" style="font-size:15px" title="Actions" onclick="openRowMenu(event, '${d.id}')">⋮</button>
-            <div class="rowmenu" id="rm_${d.id}" style="display:none;position:absolute;right:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:190px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:25">
+            <div class="rowmenu" id="rm_${d.id}" style="display:none;position:absolute;right:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:190px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:999">
               <div class="small muted" style="padding:4px 8px">Send to task app</div>
               <button class="menu-item" onclick="sendToTaskApp('google_tasks','${d.id}');closeRowMenus()">Google Tasks</button>
               <button class="menu-item" onclick="sendToTaskApp('ms_todo','${d.id}');closeRowMenus()">Microsoft To Do</button>
