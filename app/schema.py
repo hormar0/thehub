@@ -151,6 +151,14 @@ CREATE TABLE IF NOT EXISTS mrf_evidence (
     PRIMARY KEY (gate_id, criterion_id)
 );
 
+CREATE TABLE IF NOT EXISTS mistral_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    api_key TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL DEFAULT 'mistral-large-latest',
+    base_url TEXT NOT NULL DEFAULT 'https://api.mistral.ai/v1',
+    enabled INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS wbs (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL REFERENCES projects(id),
@@ -442,6 +450,7 @@ def seed(db: sqlite3.Connection):
     ])
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
     cur.execute("INSERT OR IGNORE INTO program_settings VALUES (1, 'green', 'deliverables')")
+    cur.execute("INSERT OR IGNORE INTO mistral_config VALUES (1, '', 'mistral-large-latest', 'https://api.mistral.ai/v1', 0)")
 
     cur.executemany("INSERT OR IGNORE INTO users VALUES (?,?,?,?,?,?)", [
         ("areinhart", "A. Reinhart", "a.reinhart@example.com", "+46 70 111 22 33", "PRJ-01", "SAP S/4, Finance, Process design"),

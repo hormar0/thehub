@@ -332,6 +332,19 @@ def _http_json(method, url, token, payload):
         return json.loads(body) if body else {}
 
 
+
+def _mistral_chat(api_key, base_url, model, system, user):
+    payload = {"model": model, "messages": [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user}]}
+    req = urllib.request.Request(base_url.rstrip("/") + "/chat/completions",
+        data=json.dumps(payload).encode(), method="POST",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        res = json.loads(r.read().decode())
+    return res["choices"][0]["message"]["content"]
+
+
 def _gdrive_upload(token, filename, text):
     meta = json.dumps({"name": filename, "mimeType": "text/plain"}).encode()
     boundary = "----thehubboundary"
@@ -595,6 +608,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not db.execute("SELECT id FROM gates WHERE id=?", (gid,)).fetchone():
                     return self._send(404, {"error": "gate not found"})
                 return self._send(200, mrf_compute(db, gid))
+            if path == "/api/mistral":
+                cfg = db.execute("SELECT * FROM mistral_config WHERE id=1").fetchone()
+                out = dict(cfg) if cfg else {}
+                out["api_key"] = ("•••" + out["api_key"][-4:]) if out.get("api_key") else ""
+                return self._send(200, out)
             if path == "/api/allocation":
                 users = rows(db.execute("SELECT u.*, p.name AS project_name FROM users u LEFT JOIN projects p ON p.id = u.project_id ORDER BY u.username"))
                 hours = {}
@@ -706,6 +724,48 @@ class Handler(BaseHTTPRequestHandler):
                 db.execute("INSERT INTO program_settings (id, light, report_on) VALUES (1, 'green', ?) ON CONFLICT(id) DO UPDATE SET report_on=excluded.report_on", (mode,))
                 db.commit()
                 return self._send(200, {"ok": True, "report_on": mode})
+            if path == "/api/mistral/save":
+                db.execute("INSERT INTO mistral_config (id, api_key, model, base_url, enabled) VALUES (1,?,?,?,?) ON CONFLICT(id) DO UPDATE SET api_key=excluded.api_key, model=excluded.model, base_url=excluded.base_url, enabled=excluded.enabled",
+                           (body.get("api_key", ""), body.get("model", "mistral-large-latest"), body.get("base_url", "https://api.mistral.ai/v1"), 1 if body.get("enabled") else 0))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/mistral/test":
+                cfg = db.execute("SELECT * FROM mistral_config WHERE id=1").fetchone()
+                if not cfg or not cfg["api_key"]:
+                    return self._send(400, {"error": "save an API key first"})
+                try:
+                    reply = _mistral_chat(cfg["api_key"], cfg["base_url"], cfg["model"], "You are a connectivity test. Reply exactly: OK", "ping")
+                except urllib.error.HTTPError as e:
+                    return self._send(502, {"error": f"Mistral API {e.code}: {e.read().decode()[:200]}"})
+                except Exception as e:
+                    log_error(db, "ERROR", "mistral/test", e, traceback.format_exc())
+                    return self._send(502, {"error": str(e)})
+                return self._send(200, {"ok": True, "model": cfg["model"], "reply": reply[:300]})
+            if path == "/api/agents/run":
+                name = body.get("name")
+                prompt = body.get("prompt", "Summarize the current program status from the Hub.")
+                agent = db.execute("SELECT * FROM ai_agents WHERE name=?", (name,)).fetchone()
+                if not agent:
+                    return self._send(404, {"error": "unknown agent"})
+                if not agent["enabled"]:
+                    return self._send(400, {"error": "agent is disabled in settings"})
+                cfg = db.execute("SELECT * FROM mistral_config WHERE id=1").fetchone()
+                if not cfg or not cfg["api_key"]:
+                    return self._send(400, {"error": "connect Mistral first (☰ → Mistral)"})
+                dash = build_dashboard(db)
+                ctx = json.dumps({"dashboard": {k: dash[k] for k in ("today", "program_light", "counts", "attention")},
+                                  "next_gate": dash["next_gate"], "mrf": dash["mrf"]["score"] if dash.get("mrf") else None}, ensure_ascii=False)
+                system = (f"You are the '{agent['name']}' agent in The Hub (role: {agent['role']}; owner: {agent['owner']}). "
+                          f"Grounding contract — only use these sources: {agent['grounding']}. Accuracy gate: >= {agent['accuracy_gate']}%. "
+                          f"If the evidence is insufficient, say so instead of inventing. Hub context: {ctx}")
+                try:
+                    reply = _mistral_chat(cfg["api_key"], cfg["base_url"], cfg["model"], system, prompt)
+                except urllib.error.HTTPError as e:
+                    return self._send(502, {"error": f"Mistral API {e.code}: {e.read().decode()[:200]}"})
+                except Exception as e:
+                    log_error(db, "ERROR", "agents/run", e, traceback.format_exc())
+                    return self._send(502, {"error": str(e)})
+                return self._send(200, {"ok": True, "agent": name, "model": cfg["model"], "reply": reply})
             if path == "/api/gates/delete":
                 gid = body.get("id")
                 g = db.execute("SELECT id FROM gates WHERE id=?", (gid,)).fetchone()

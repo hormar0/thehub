@@ -232,6 +232,7 @@
     <button class="menu-item" id="menuProgram" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">▤ Program &amp; projects</button>
     <button class="menu-item" id="menuRepo" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☁ Document repository</button>
     <button class="menu-item" id="menuAgents" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">🤖 AI agents</button>
+    <button class="menu-item" id="menuMistral" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">✦ Mistral</button>
     <button class="menu-item" id="menuUsers" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">👤 Users</button>
   </div>
 </header>
@@ -314,6 +315,7 @@ document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click',
   else if (b.id === 'menuRepo') settingsTab = 'repo';
   else if (b.id === 'menuAgents') settingsTab = 'agents';
   else if (b.id === 'menuUsers') settingsTab = 'users';
+  else if (b.id === 'menuMistral') settingsTab = 'mistral';
   else settingsTab = 'store';
   currentView = 'settings'; render();
 }));
@@ -826,6 +828,7 @@ async function renderAgents() {
           <div class="small muted" style="margin:6px 0">${esc(a.role)}</div>
           <div class="small">Owner: ${esc(a.owner)} · Accuracy gate: ≥${a.accuracy_gate}%</div>
           <div class="small muted">Grounding: ${esc(a.grounding)}</div>
+          <div style="margin-top:8px"><button class="btn ghost" onclick="runAgent('${esc(a.name)}')">✦ Run in Mistral</button></div>
         </div>`).join('')}
     </div>`;
 }
@@ -979,7 +982,7 @@ async function syncErrors() {
   render();
 }
 const SETTINGS_TABS = [
-  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['users', 'Users'],
+  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['users', 'Users'], ['mistral', 'Mistral'],
 ];
 async function renderSettings() {
   const mods = await api('/modules');
@@ -988,6 +991,7 @@ async function renderSettings() {
   const taskappsPanel = settingsTab === 'store' ? await renderTaskAppsSettings() : '';
   const usersPanel = settingsTab === 'users' ? await renderUsersSettings(prog.projects) : '';
   const errorLogPanel = settingsTab === 'store' ? await renderErrorLog() : '';
+  const mistralPanel = settingsTab === 'mistral' ? await renderMistralSettings() : '';
   const rm = prog.report_on || 'deliverables';
   const SAP_PHASES = ['Discover', 'Prepare', 'Explore', 'Realize', 'Deploy', 'Run'];
   app.innerHTML = `
@@ -1083,6 +1087,7 @@ async function renderSettings() {
       </div>` : ''}
     ${settingsTab === 'agents' ? agentsPanel : ''}
     ${settingsTab === 'users' ? usersPanel : ''}
+    ${settingsTab === 'mistral' ? mistralPanel : ''}
   `;
 }
 async function addPhase() {
@@ -1243,6 +1248,58 @@ async function deleteDeliverable(id) {
   const res = await api('/deliverables/delete', 'POST', { id });
   if (res.ok) { alert(`Deleted ${id}`); render(); }
   else alert(res.error || 'Delete failed');
+}
+
+
+async function renderMistralSettings() {
+  const cfg = await api('/mistral');
+  return `
+      <div class="panel" style="max-width:560px">
+        <h3>Mistral connection</h3>
+        <div class="small muted" style="margin-bottom:12px">Connect the Hub to Mistral AI. The API key is stored locally in the Hub DB only. Agents from ☰ → AI agents run here with their grounding contract as the system prompt.</div>
+        <label class="small muted"><input type="checkbox" id="mEn" ${cfg.enabled ? 'checked' : ''} onchange="saveMistral()"> Enabled</label>
+        <label class="small muted" style="display:block;margin-top:10px">API key</label>
+        <input id="mKey" type="password" style="width:100%" placeholder="${esc(cfg.api_key || 'paste key…')}" onblur="saveMistral()">
+        <label class="small muted" style="display:block;margin-top:10px">Model</label>
+        <select id="mModel" style="width:100%" onchange="saveMistral()">
+          ${['mistral-large-latest','mistral-small-latest','codestral-latest','mistral-medium-latest'].map(m => `<option ${m === cfg.model ? 'selected' : ''}>${m}</option>`).join('')}
+        </select>
+        <label class="small muted" style="display:block;margin-top:10px">Base URL</label>
+        <input id="mUrl" style="width:100%" value="${esc(cfg.base_url)}" onblur="saveMistral()">
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <button class="btn ghost" onclick="testMistral()">Test connection</button>
+          <span id="mStatus" class="small"></span>
+        </div>
+      </div>`;
+}
+async function saveMistral() {
+  await api('/mistral/save', 'POST', {
+    enabled: document.getElementById('mEn').checked,
+    api_key: document.getElementById('mKey').value,
+    model: document.getElementById('mModel').value,
+    base_url: document.getElementById('mUrl').value,
+  });
+  document.getElementById('mStatus').textContent = 'Saved.';
+}
+async function testMistral() {
+  await saveMistral();
+  const out = document.getElementById('mStatus');
+  out.textContent = 'Testing…'; out.style.color = 'var(--muted)';
+  const res = await api('/mistral/test', 'POST', {});
+  if (res.ok) { out.textContent = `OK — ${res.model} replied: ${res.reply}`; out.style.color = 'var(--green)'; }
+  else { out.textContent = 'Failed: ' + (res.error || 'unknown'); out.style.color = 'var(--red)'; }
+}
+async function runAgent(name) {
+  const prompt = prompt(`Prompt for agent "${name}"`, 'Summarize current program status and top risks.');
+  if (prompt === null) return;
+  const res = await api('/agents/run', 'POST', { name, prompt });
+  if (res.ok) {
+    document.getElementById('modal').innerHTML = `
+      <h3>✦ ${esc(res.agent)} (via ${esc(res.model)})</h3>
+      <div style="white-space:pre-wrap;font-size:13.5px;line-height:1.6">${esc(res.reply)}</div>
+      <div class="row"><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+    document.getElementById('modalBg').classList.add('open');
+  } else alert(res.error || 'Run failed');
 }
 
 async function gradeDel(id, grade) { await api('/deliverables/grade', 'POST', { id, grade }); }
