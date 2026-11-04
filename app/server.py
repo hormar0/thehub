@@ -781,11 +781,15 @@ class Handler(BaseHTTPRequestHandler):
                 db.execute("DELETE FROM conditions WHERE gate_id=?", (gid,))
                 db.execute("DELETE FROM mrf_evidence WHERE gate_id=?", (gid,))
                 db.execute("DELETE FROM gate_reports WHERE gate_id=?", (gid,))
-                orphaned = db.execute("SELECT COUNT(*) c FROM deliverables WHERE gate_id=?", (gid,)).fetchone()["c"]
-                db.execute("UPDATE deliverables SET gate_id=(SELECT id FROM gates ORDER BY scheduled_date LIMIT 1) WHERE gate_id=?", (gid,))
+                dels = rows(db.execute("SELECT id FROM deliverables WHERE gate_id=?", (gid,)))
+                for d in dels:
+                    db.execute("DELETE FROM evidence WHERE deliverable_id=?", (d["id"],))
+                    db.execute("DELETE FROM shares WHERE deliverable_id=?", (d["id"],))
+                    db.execute("DELETE FROM time_entries WHERE deliverable_id=?", (d["id"],))
+                db.execute("DELETE FROM deliverables WHERE gate_id=?", (gid,))
                 db.execute("DELETE FROM gates WHERE id=?", (gid,))
                 db.commit()
-                return self._send(200, {"ok": True, "id": gid, "deliverables_reassigned": orphaned})
+                return self._send(200, {"ok": True, "id": gid, "deliverables_deleted": len(dels)})
             if path == "/api/deliverables/delete":
                 did = body.get("id")
                 d = db.execute("SELECT id FROM deliverables WHERE id=?", (did,)).fetchone()

@@ -396,11 +396,15 @@ async function renderGates() {
           <div class="gname">${esc(g.name)}</div>
           <div class="bar" style="margin-bottom:6px"><div style="width:${g.readiness.pct}%"></div></div>
           <div class="gdate">${esc(g.scheduled_date)} · readiness ${g.readiness.pct}%</div>
-          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn ghost" onclick="openGate('${g.id}')">Details</button>
-            <button class="btn ghost" onclick="window.open('/report/${g.id}','_blank')">Report</button>
-            <button class="btn ghost" onclick="customizeReport('${g.id}')">✎ Cover</button>
-            <button class="btn ghost" style="color:var(--red)" onclick="deleteGate('${g.id}')">✕</button>
+          <div style="margin-top:8px;position:relative;display:inline-block">
+            <button class="kb-del" style="font-size:16px" title="Actions" onclick="openGateMenu(event, '${g.id}')">⋮</button>
+            <div class="rowmenu" id="gm_${g.id}" style="display:none;position:absolute;left:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:170px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:25">
+              <button class="menu-item" onclick="openGate('${g.id}');closeGateMenus()">Details</button>
+              <button class="menu-item" onclick="window.open('/report/${g.id}','_blank');closeGateMenus()">📄 Report</button>
+              <button class="menu-item" onclick="customizeReport('${g.id}');closeGateMenus()">✎ Cover</button>
+              <div style="border-top:1px solid var(--glass-border);margin:4px 0"></div>
+              <button class="menu-item" style="color:var(--red)" onclick="deleteGate('${g.id}');closeGateMenus()">✕ Delete</button>
+            </div>
           </div>
         </div>`).join('')}
     </div>`;
@@ -568,7 +572,7 @@ function openRowMenu(e, id) {
   if (!wasOpen) m.style.display = 'block';
 }
 function closeRowMenus() { document.querySelectorAll('.rowmenu').forEach(m => m.style.display = 'none'); }
-document.addEventListener('click', () => closeRowMenus());
+document.addEventListener('click', () => { closeRowMenus(); closeGateMenus(); });
 async function shareDeliverable(id) {
   const res = await api('/share/create', 'POST', { deliverable_id: id });
   if (res.ok) {
@@ -1238,10 +1242,18 @@ async function renderAllocation() {
 }
 
 
+function openGateMenu(e, id) {
+  e.stopPropagation();
+  const m = document.getElementById('gm_' + id);
+  const wasOpen = m.style.display === 'block';
+  closeGateMenus();
+  if (!wasOpen) m.style.display = 'block';
+}
+function closeGateMenus() { document.querySelectorAll('#app .rowmenu').forEach(m => m.style.display = 'none'); }
 async function deleteGate(id) {
-  if (!confirm(`Delete gate ${id}? Its conditions, MRF evidence and report cover are removed; deliverables are reassigned to the earliest gate.`)) return;
+  if (!confirm(`Delete gate ${id}? Its conditions, MRF evidence, report cover AND all its deliverables are deleted.`)) return;
   const res = await api('/gates/delete', 'POST', { id });
-  if (res.ok) { alert(`Deleted ${id}` + (res.deliverables_reassigned ? ` — ${res.deliverables_reassigned} deliverable(s) reassigned` : '')); render(); }
+  if (res.ok) { alert(`Deleted ${id}` + (res.deliverables_deleted ? ` — ${res.deliverables_deleted} deliverable(s) deleted too` : '')); render(); }
   else alert(res.error || 'Delete failed');
 }
 async function deleteDeliverable(id) {
