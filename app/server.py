@@ -627,6 +627,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"report_on": ps["report_on"] if ps else "deliverables"})
             if path == "/api/errors":
                 return self._send(200, rows(db.execute("SELECT * FROM error_log ORDER BY id DESC LIMIT 200")))
+            if path == "/api/agents/export":
+                agents = rows(db.execute("SELECT * FROM ai_agents WHERE enabled=1 ORDER BY position"))
+                payload = {"source": "The Hub ai_agents registry", "exported": date.today().isoformat(),
+                           "agents": [{"name": a["name"], "role": a["role"], "owner": a["owner"],
+                                       "system_prompt": f"You are '{a['name']}' in The Hub. Role: {a['role']}. Owner: {a['owner']}. Grounding — only use: {a['grounding']}. Accuracy gate >= {a['accuracy_gate']}%. If evidence is insufficient, say so instead of inventing.",
+                                       "accuracy_gate": a["accuracy_gate"]} for a in agents]}
+                return self._send(200, payload, "application/json")
             if path == "/api/agents":
                 return self._send(200, rows(db.execute("SELECT * FROM ai_agents ORDER BY position")))
             if path == "/api/taskapps":

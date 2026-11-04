@@ -818,6 +818,7 @@ async function renderAgents() {
   app.innerHTML = `
     <h2>AI Agents</h2>
     <div class="sub">Governed agents wired into every gate — each with a named owner, grounding contract, and accuracy gate. Configure them in ☰ → AI agents.</div>
+    <div style="margin-bottom:14px"><button class="btn ghost" onclick="window.open('/api/agents/export','_blank')">⇪ Export registry (JSON for Mistral)</button></div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
       ${agents.map(a => `
         <div class="card" style="${a.enabled ? '' : 'opacity:.45'}">
