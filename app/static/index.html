@@ -392,7 +392,9 @@ async function renderGates() {
     <div class="gate-rail">
       ${gates.map(g => `
         <div class="gate-node ${current && g.id === current.id ? 'current' : ''}">
-          <div class="gid">${esc(g.id)} ${gatePill(g.status)}</div>
+          <div class="gid">${esc(g.id)} ${gatePill(g.status)}
+            <span class="tl ${g.status === 'passed' || g.status === 'passed_with_conditions' ? 'tl-green' : g.status === 'in_progress' ? '' : 'tl-gray'}" ${g.status === 'in_progress' ? 'style="background:#4c9aff;box-shadow:0 0 8px rgba(76,154,255,.9);border-radius:50%;display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.25)"' : ''} title="${esc(g.status)}"></span>
+          </div>
           <div class="gname">${esc(g.name)}</div>
           <div class="bar" style="margin-bottom:6px"><div style="width:${g.readiness.pct}%"></div></div>
           <div class="gdate">${esc(g.scheduled_date)} · readiness ${g.readiness.pct}%</div>
@@ -564,14 +566,22 @@ async function renderRegister() {
     </div>`;
 }
 async function updDel(id, state) { await api('/deliverables/update', 'POST', { id, state }); if (currentView === 'dashboard') renderDashboard(); }
+function _floatMenu(m, anchor) {
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect();
+  m.style.position = 'fixed';
+  m.style.left = Math.min(r.left, window.innerWidth - 210) + 'px';
+  m.style.top = (r.bottom + 4) + 'px';
+  m.style.display = 'block';
+}
 function openRowMenu(e, id) {
   e.stopPropagation();
   const m = document.getElementById('rm_' + id);
-  const wasOpen = m.style.display === 'block';
+  const wasOpen = m.style.display === 'block' && m.parentElement === document.body;
   closeRowMenus();
-  if (!wasOpen) m.style.display = 'block';
+  if (!wasOpen) _floatMenu(m, e.currentTarget);
 }
-function closeRowMenus() { document.querySelectorAll('.rowmenu').forEach(m => m.style.display = 'none'); }
+function closeRowMenus() { document.querySelectorAll('body > .rowmenu').forEach(m => { m.style.display = 'none'; }); }
 document.addEventListener('click', () => { closeRowMenus(); closeGateMenus(); });
 async function shareDeliverable(id) {
   const res = await api('/share/create', 'POST', { deliverable_id: id });
@@ -1245,22 +1255,37 @@ async function renderAllocation() {
 function openGateMenu(e, id) {
   e.stopPropagation();
   const m = document.getElementById('gm_' + id);
-  const wasOpen = m.style.display === 'block';
+  const wasOpen = m.style.display === 'block' && m.parentElement === document.body;
   closeGateMenus();
-  if (!wasOpen) m.style.display = 'block';
+  if (!wasOpen) _floatMenu(m, e.currentTarget);
 }
-function closeGateMenus() { document.querySelectorAll('#app .rowmenu').forEach(m => m.style.display = 'none'); }
+function closeGateMenus() { document.querySelectorAll('body > .rowmenu').forEach(m => m.style.display = 'none'); }
+function toast(msg, kind = 'ok') {
+  let t = document.getElementById('hubToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'hubToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2000;background:linear-gradient(165deg, rgba(52,62,92,.95), rgba(22,28,48,.97));border:1px solid var(--glass-border);border-radius:14px;padding:12px 20px;box-shadow:0 18px 50px rgba(0,0,0,.6), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px);color:var(--text);font-size:13.5px;display:none';
+    t.innerHTML = '<b style="background:linear-gradient(90deg,#8ab8ff,#cfa9ff);-webkit-background-clip:text;background-clip:text;color:transparent">The Hub</b> <span id="hubToastMsg"></span>';
+    document.body.appendChild(t);
+  }
+  document.getElementById('hubToastMsg').textContent = msg;
+  t.style.borderColor = kind === 'err' ? 'rgba(255,125,120,.5)' : 'rgba(94,227,138,.5)';
+  t.style.display = 'block';
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => t.style.display = 'none', 3500);
+}
 async function deleteGate(id) {
   if (!confirm(`Delete gate ${id}? Its conditions, MRF evidence, report cover AND all its deliverables are deleted.`)) return;
   const res = await api('/gates/delete', 'POST', { id });
-  if (res.ok) { alert(`Deleted ${id}` + (res.deliverables_deleted ? ` — ${res.deliverables_deleted} deliverable(s) deleted too` : '')); render(); }
-  else alert(res.error || 'Delete failed');
+  if (res.ok) { toast(`Deleted ${id}` + (res.deliverables_deleted ? ` — ${res.deliverables_deleted} deliverable(s) deleted too` : '')); render(); }
+  else toast(res.error || 'Delete failed', 'err');
 }
 async function deleteDeliverable(id) {
   if (!confirm(`Delete deliverable ${id}? Its evidence, shares and time entries are removed.`)) return;
   const res = await api('/deliverables/delete', 'POST', { id });
-  if (res.ok) { alert(`Deleted ${id}`); render(); }
-  else alert(res.error || 'Delete failed');
+  if (res.ok) { toast(`Deleted ${id}`); render(); }
+  else toast(res.error || 'Delete failed', 'err');
 }
 
 
