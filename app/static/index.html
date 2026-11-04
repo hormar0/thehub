@@ -398,6 +398,7 @@ async function renderGates() {
             <button class="btn ghost" onclick="openGate('${g.id}')">Details</button>
             <button class="btn ghost" onclick="window.open('/report/${g.id}','_blank')">Report</button>
             <button class="btn ghost" onclick="customizeReport('${g.id}')">✎ Cover</button>
+            <button class="btn ghost" style="color:var(--red)" onclick="deleteGate('${g.id}')">✕</button>
           </div>
         </div>`).join('')}
     </div>`;
@@ -550,6 +551,8 @@ async function renderRegister() {
               <button class="menu-item" onclick="sendToTaskApp('todoist','${d.id}');closeRowMenus()">Todoist</button>
               <div style="border-top:1px solid var(--glass-border);margin:4px 0"></div>
               <button class="menu-item" onclick="shareDeliverable('${d.id}');closeRowMenus()">🔗 Share…</button>
+              <div style="border-top:1px solid var(--glass-border);margin:4px 0"></div>
+              <button class="menu-item" style="color:var(--red)" onclick="deleteDeliverable('${d.id}');closeRowMenus()">✕ Delete</button>
             </div></td></tr>`).join('')}
       </table>
     </div>`;
@@ -1226,6 +1229,20 @@ async function renderAllocation() {
         </tr>`).join('') || '<tr><td colspan="4" class="muted">No people match.</td></tr>'}
       </table>
     </div>`;
+}
+
+
+async function deleteGate(id) {
+  if (!confirm(`Delete gate ${id}? Its conditions, MRF evidence and report cover are removed; deliverables are reassigned to the earliest gate.`)) return;
+  const res = await api('/gates/delete', 'POST', { id });
+  if (res.ok) { alert(`Deleted ${id}` + (res.deliverables_reassigned ? ` — ${res.deliverables_reassigned} deliverable(s) reassigned` : '')); render(); }
+  else alert(res.error || 'Delete failed');
+}
+async function deleteDeliverable(id) {
+  if (!confirm(`Delete deliverable ${id}? Its evidence, shares and time entries are removed.`)) return;
+  const res = await api('/deliverables/delete', 'POST', { id });
+  if (res.ok) { alert(`Deleted ${id}`); render(); }
+  else alert(res.error || 'Delete failed');
 }
 
 async function gradeDel(id, grade) { await api('/deliverables/grade', 'POST', { id, grade }); }

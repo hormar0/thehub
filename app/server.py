@@ -706,6 +706,30 @@ class Handler(BaseHTTPRequestHandler):
                 db.execute("INSERT INTO program_settings (id, light, report_on) VALUES (1, 'green', ?) ON CONFLICT(id) DO UPDATE SET report_on=excluded.report_on", (mode,))
                 db.commit()
                 return self._send(200, {"ok": True, "report_on": mode})
+            if path == "/api/gates/delete":
+                gid = body.get("id")
+                g = db.execute("SELECT id FROM gates WHERE id=?", (gid,)).fetchone()
+                if not g:
+                    return self._send(404, {"error": "gate not found"})
+                db.execute("DELETE FROM conditions WHERE gate_id=?", (gid,))
+                db.execute("DELETE FROM mrf_evidence WHERE gate_id=?", (gid,))
+                db.execute("DELETE FROM gate_reports WHERE gate_id=?", (gid,))
+                orphaned = db.execute("SELECT COUNT(*) c FROM deliverables WHERE gate_id=?", (gid,)).fetchone()["c"]
+                db.execute("UPDATE deliverables SET gate_id=(SELECT id FROM gates ORDER BY scheduled_date LIMIT 1) WHERE gate_id=?", (gid,))
+                db.execute("DELETE FROM gates WHERE id=?", (gid,))
+                db.commit()
+                return self._send(200, {"ok": True, "id": gid, "deliverables_reassigned": orphaned})
+            if path == "/api/deliverables/delete":
+                did = body.get("id")
+                d = db.execute("SELECT id FROM deliverables WHERE id=?", (did,)).fetchone()
+                if not d:
+                    return self._send(404, {"error": "deliverable not found"})
+                db.execute("DELETE FROM evidence WHERE deliverable_id=?", (did,))
+                db.execute("DELETE FROM shares WHERE deliverable_id=?", (did,))
+                db.execute("DELETE FROM time_entries WHERE deliverable_id=?", (did,))
+                db.execute("DELETE FROM deliverables WHERE id=?", (did,))
+                db.commit()
+                return self._send(200, {"ok": True, "id": did})
             if path == "/api/errors/log":
                 log_error(db, body.get("level", "ERROR"), body.get("source", "client"), body.get("message", ""), body.get("detail", ""))
                 return self._send(200, {"ok": True})
