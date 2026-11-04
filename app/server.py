@@ -555,7 +555,14 @@ class Handler(BaseHTTPRequestHandler):
                     by_owner.setdefault(e["owner"], {"hours": 0, "items": 0})
                     by_owner[e["owner"]]["hours"] += e["hours"]
                     by_owner[e["owner"]]["items"] += 1
-                return self._send(200, {"entries": entries, "by_owner": by_owner})
+                by_project = {}
+                for e in entries:
+                    pid = e.get("project_id") or "(unassigned)"
+                    by_project.setdefault(pid, {"hours": 0, "items": 0})
+                    by_project[pid]["hours"] += e["hours"]
+                    by_project[pid]["items"] += 1
+                ps = db.execute("SELECT report_on FROM program_settings WHERE id=1").fetchone()
+                return self._send(200, {"entries": entries, "by_owner": by_owner, "by_project": by_project, "report_on": ps["report_on"] if ps else "deliverables"})
             if path == "/api/gantt":
                 dels = rows(db.execute("SELECT id, title, owner, gate_id, state, due_date, dependency_ids FROM deliverables ORDER BY due_date"))
                 gates = rows(db.execute("SELECT id, name, scheduled_date, status FROM gates ORDER BY scheduled_date"))
@@ -565,7 +572,8 @@ class Handler(BaseHTTPRequestHandler):
                 projects = rows(db.execute("SELECT p.*, ph.name AS phase_name FROM projects p LEFT JOIN program_phases ph ON ph.id = p.program_phase_id ORDER BY p.start_date"))
                 repo = db.execute("SELECT * FROM doc_repo WHERE id=1").fetchone()
                 ps = db.execute("SELECT light FROM program_settings WHERE id=1").fetchone()
-                return self._send(200, {"phases": phases, "projects": projects, "doc_repo": dict(repo) if repo else None, "program_light": ps["light"] if ps else "green"})
+                rps = db.execute("SELECT report_on FROM program_settings WHERE id=1").fetchone()
+                return self._send(200, {"phases": phases, "projects": projects, "doc_repo": dict(repo) if repo else None, "program_light": ps["light"] if ps else "green", "report_on": rps["report_on"] if rps else "deliverables"})
             if path == "/api/users":
                 return self._send(200, rows(db.execute("SELECT u.*, p.name AS project_name FROM users u LEFT JOIN projects p ON p.id = u.project_id ORDER BY u.username")))
             if path == "/api/roadmap":
@@ -587,6 +595,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not db.execute("SELECT id FROM gates WHERE id=?", (gid,)).fetchone():
                     return self._send(404, {"error": "gate not found"})
                 return self._send(200, mrf_compute(db, gid))
+            if path == "/api/wbs":
+                return self._send(200, rows(db.execute("SELECT * FROM wbs ORDER BY project_id, code")))
+            if path == "/api/reportmode":
+                ps = db.execute("SELECT report_on FROM program_settings WHERE id=1").fetchone()
+                return self._send(200, {"report_on": ps["report_on"] if ps else "deliverables"})
             if path == "/api/errors":
                 return self._send(200, rows(db.execute("SELECT * FROM error_log ORDER BY id DESC LIMIT 200")))
             if path == "/api/agents":
@@ -669,6 +682,23 @@ class Handler(BaseHTTPRequestHandler):
                            (gid, logo, body.get("logo_name", ""), body.get("front_title", ""), body.get("front_description", "")))
                 db.commit()
                 return self._send(200, {"ok": True})
+            if path == "/api/wbs/add":
+                wid = f"WBS-{db.execute('SELECT COUNT(*) c FROM wbs').fetchone()['c'] + 1:03d}"
+                db.execute("INSERT INTO wbs VALUES (?,?,?,?,?,?,?)", (wid, body.get("project_id"), body.get("parent_id", ""), body.get("code", ""), body.get("name"), body.get("start_date", ""), body.get("end_date", "")))
+                db.commit()
+                return self._send(200, {"ok": True, "id": wid})
+            if path == "/api/wbs/update":
+                db.execute("UPDATE wbs SET project_id=?, parent_id=?, code=?, name=?, start_date=?, end_date=? WHERE id=?",
+                           (body.get("project_id"), body.get("parent_id", ""), body.get("code", ""), body.get("name"), body.get("start_date", ""), body.get("end_date", ""), body.get("id")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/reportmode":
+                mode = body.get("report_on", "deliverables")
+                if mode not in ("deliverables", "projects"):
+                    return self._send(400, {"error": "report_on must be deliverables or projects"})
+                db.execute("INSERT INTO program_settings (id, light, report_on) VALUES (1, 'green', ?) ON CONFLICT(id) DO UPDATE SET report_on=excluded.report_on", (mode,))
+                db.commit()
+                return self._send(200, {"ok": True, "report_on": mode})
             if path == "/api/errors/log":
                 log_error(db, body.get("level", "ERROR"), body.get("source", "client"), body.get("message", ""), body.get("detail", ""))
                 return self._send(200, {"ok": True})
@@ -760,7 +790,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "name": name, "enabled": enabled})
             if path == "/api/timereport/add":
                 tid = f"TE-{db.execute('SELECT COUNT(*) c FROM time_entries').fetchone()['c'] + 1:02d}"
-                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?)", (tid, body.get("deliverable_id"), body.get("owner"), float(body.get("hours", 0)), body.get("week")))
+                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?,?)", (tid, body.get("deliverable_id"), body.get("owner"), float(body.get("hours", 0)), body.get("week"), body.get("project_id", "")))
                 db.commit()
                 return self._send(200, {"ok": True, "id": tid})
             if path == "/api/program/phases/add":
@@ -776,14 +806,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True})
             if path == "/api/program/projects/add":
                 pid = f"PRJ-{db.execute('SELECT COUNT(*) c FROM projects').fetchone()['c'] + 1:02d}"
-                db.execute("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?)",
+                db.execute("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?,?)",
                            (pid, body.get("name"), body.get("program_phase_id"), body.get("sap_phase") or "Discover",
-                            body.get("start_date"), body.get("end_date"), body.get("status") or "planned", body.get("light") or "green"))
+                            body.get("start_date"), body.get("end_date"), body.get("status") or "planned", body.get("light") or "green", body.get("project_type") or "template"))
                 db.commit()
                 return self._send(200, {"ok": True, "id": pid})
             if path == "/api/program/projects/update":
-                db.execute("UPDATE projects SET name=?, program_phase_id=?, sap_phase=?, start_date=?, end_date=?, status=?, light=? WHERE id=?",
-                           (body.get("name"), body.get("program_phase_id"), body.get("sap_phase"), body.get("start_date"), body.get("end_date"), body.get("status"), body.get("light", "green"), body.get("id")))
+                db.execute("UPDATE projects SET name=?, program_phase_id=?, sap_phase=?, start_date=?, end_date=?, status=?, light=?, project_type=? WHERE id=?",
+                           (body.get("name"), body.get("program_phase_id"), body.get("sap_phase"), body.get("start_date"), body.get("end_date"), body.get("status"), body.get("light", "green"), body.get("project_type", "template"), body.get("id")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/program/docrepo":

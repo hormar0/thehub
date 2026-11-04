@@ -93,7 +93,8 @@ CREATE TABLE IF NOT EXISTS time_entries (
     deliverable_id TEXT NOT NULL REFERENCES deliverables(id),
     owner TEXT NOT NULL,
     hours REAL NOT NULL,
-    week TEXT NOT NULL
+    week TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS program_phases (
@@ -112,12 +113,14 @@ CREATE TABLE IF NOT EXISTS projects (
     start_date TEXT NOT NULL,
     end_date TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'planned',
-    light TEXT NOT NULL DEFAULT 'green'
+    light TEXT NOT NULL DEFAULT 'green',
+    project_type TEXT NOT NULL DEFAULT 'template'
 );
 
 CREATE TABLE IF NOT EXISTS program_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    light TEXT NOT NULL DEFAULT 'green'
+    light TEXT NOT NULL DEFAULT 'green',
+    report_on TEXT NOT NULL DEFAULT 'deliverables'
 );
 
 CREATE TABLE IF NOT EXISTS mrf_dimensions (
@@ -146,6 +149,16 @@ CREATE TABLE IF NOT EXISTS mrf_evidence (
     source TEXT NOT NULL DEFAULT '',
     override TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (gate_id, criterion_id)
+);
+
+CREATE TABLE IF NOT EXISTS wbs (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    parent_id TEXT NOT NULL DEFAULT '',
+    code TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL,
+    start_date TEXT NOT NULL DEFAULT '',
+    end_date TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS error_log (
@@ -399,7 +412,8 @@ def seed(db: sqlite3.Connection):
         ("TE-05", "DEL-005", "S. Lindqvist", 12.5, "2026-W13"),
         ("TE-06", "DEL-006", "L. Moreau", 8.0, "2026-W12"),
     ]
-    cur.executemany("INSERT INTO time_entries VALUES (?,?,?,?,?)", time_entries)
+    cur.executemany("INSERT INTO time_entries VALUES (?,?,?,?,?,?)", [(t[0], t[1], t[2], t[3], t[4], "PRJ-01") for t in time_entries])
+
 
     cur.executemany("INSERT INTO program_phases VALUES (?,?,?,?,?)", [
         ("PH-DISCOVER", "Discover", "2025-10-01", "2025-12-15", 0),
@@ -410,14 +424,18 @@ def seed(db: sqlite3.Connection):
         ("PH-RUN", "Run", "2027-02-16", "2027-08-31", 5),
     ])
 
-    cur.executemany("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?)", [
-        ("PRJ-01", "Wave 1 — HQ & 2 pilot countries", "PH-EXPLORE", "Explore", "2026-03-01", "2026-11-30", "active", "green"),
-        ("PRJ-02", "Wave 2 — Northern Europe", "PH-REALIZE", "Realize", "2026-09-01", "2027-01-31", "planned", "amber"),
-        ("PRJ-03", "Wave 3 — APAC & Americas", "PH-DEPLOY", "Deploy", "2026-12-01", "2027-02-15", "planned", "red"),
+    cur.executemany("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?,?)", [
+        ("PRJ-01", "Wave 1 — HQ & 2 pilot countries", "PH-EXPLORE", "Explore", "2026-03-01", "2026-11-30", "active", "green", "rollout"),
+        ("PRJ-02", "Wave 2 — Northern Europe", "PH-REALIZE", "Realize", "2026-09-01", "2027-01-31", "planned", "amber", "rollout"),
+        ("PRJ-03", "Wave 3 — APAC & Americas", "PH-DEPLOY", "Deploy", "2026-12-01", "2027-02-15", "planned", "red", "rollout"),
     ])
 
+    cur.executemany("INSERT OR IGNORE INTO projects VALUES (?,?,?,?,?,?,?,?,?)", [
+        ("PRJ-T1", "Global Template v1", "PH-EXPLORE", "Explore", "2026-03-01", "2026-10-30", "active", "green", "template"),
+        ("PRJ-C1", "Cell demo site", "PH-EXPLORE", "Explore", "2026-05-01", "2026-08-31", "planned", "green", "cell"),
+    ])
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
-    cur.execute("INSERT OR IGNORE INTO program_settings VALUES (1, 'green')")
+    cur.execute("INSERT OR IGNORE INTO program_settings VALUES (1, 'green', 'deliverables')")
 
     cur.executemany("INSERT OR IGNORE INTO users VALUES (?,?,?,?,?)", [
         ("areinhart", "A. Reinhart", "a.reinhart@example.com", "+46 70 111 22 33", "PRJ-01"),
@@ -501,6 +519,15 @@ def seed(db: sqlite3.Connection):
         ("C-005", "D8-01", "0", "2026-10-30", "RAID register", ""),
     ])
 
+    cur.executemany("INSERT INTO wbs VALUES (?,?,?,?,?,?,?)", [
+        ("WBS-01", "PRJ-01", "", "1", "Wave 1 — HQ & 2 pilot countries", "2026-03-01", "2026-11-30"),
+        ("WBS-01-1", "PRJ-01", "WBS-01", "1.1", "Design & blueprint", "2026-03-01", "2026-06-30"),
+        ("WBS-01-2", "PRJ-01", "WBS-01", "1.2", "Build & configure", "2026-07-01", "2026-10-15"),
+        ("WBS-01-3", "PRJ-01", "WBS-01", "1.3", "Test & cutover", "2026-10-16", "2026-11-30"),
+        ("WBS-T1", "PRJ-T1", "", "1", "Global Template v1", "2026-03-01", "2026-10-30"),
+        ("WBS-T1-1", "PRJ-T1", "WBS-T1", "1.1", "Template design", "2026-03-01", "2026-07-31"),
+        ("WBS-T1-2", "PRJ-T1", "WBS-T1", "1.2", "Template build & validation", "2026-08-01", "2026-10-30"),
+    ])
     db.commit()
 
 

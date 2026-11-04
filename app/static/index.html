@@ -187,6 +187,7 @@
     <button data-view="gantt">Gantt</button>
     <button data-view="roadmap">Roadmap</button>
     <button data-view="timereport">Time Report</button>
+    <button data-view="wbs">WBS</button>
     <button data-view="agents">AI Agents</button>
     <button data-view="briefing">Briefing Pack</button>
   </nav>
@@ -297,6 +298,7 @@ async function render() {
   if (currentView === 'gantt') return renderGantt();
   if (currentView === 'roadmap') return renderRoadmap();
   if (currentView === 'timereport') return renderTimeReport();
+  if (currentView === 'wbs') return renderWbs();
   if (currentView === 'agents') return renderAgents();
 }
 function lightDot(l, lg) { return `<span class="tl tl-${esc(l||'green')}${lg?' tl-lg':''}" title="${esc(l||'green')}"></span>`; }
@@ -709,23 +711,40 @@ async function renderRoadmap() {
 }
 async function renderTimeReport() {
   const t = await api('/timereport');
+  const progs = await api('/program');
   const dels = await api('/deliverables');
+  const projOptions = progs.projects.map(p => `<option value="${p.id}">${esc(p.id)} ${esc(p.name)} (${esc(p.project_type)})</option>`).join('');
   const delOptions = dels.map(d => `<option value="${esc(d.id)}">${esc(d.id)} ${esc(d.title)}</option>`).join('');
   app.innerHTML = `
     <h2>Time Reporting</h2>
-    <div class="sub">Hours booked per deliverable and owner</div>
+    <div class="sub">Report on:
+      <select onchange="setReportMode(this.value)" style="display:inline-block">
+        <option value="deliverables" ${t.report_on === 'deliverables' ? 'selected' : ''}>Deliverables</option>
+        <option value="projects" ${t.report_on === 'projects' ? 'selected' : ''}>Projects / sub-projects</option>
+      </select>
+      — toggle lives in ☰ → App store too
+    </div>
     <div class="grid two-col">
+      ${t.report_on === 'projects' ? `
+      <div class="panel">
+        <h3>Hours by project / sub-project</h3>
+        <table><tr><th>Project</th><th>Hours</th><th>Entries</th></tr>
+        ${Object.entries(t.by_project || {}).map(([p, v]) => `<tr><td>${esc(p)}</td><td>${v.hours.toFixed(1)}</td><td>${v.items}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">No project-tagged hours yet.</td></tr>'}
+        </table>
+      </div>` : `
       <div class="panel">
         <h3>Hours by owner</h3>
         <table><tr><th>Owner</th><th>Hours</th><th>Entries</th></tr>
         ${Object.entries(t.by_owner).map(([o, v]) => `<tr><td>${esc(o)}</td><td>${v.hours.toFixed(1)}</td><td>${v.items}</td></tr>`).join('')}
         </table>
-      </div>
+      </div>`}
+      
       <div class="panel">
         <h3>Log hours</h3>
         <label class="small muted">Deliverable</label><select id="trDel" style="width:100%">${delOptions}</select>
         <label class="small muted" style="margin-top:8px">Owner</label><input id="trOwner" style="width:100%" placeholder="Name">
         <label class="small muted" style="margin-top:8px">Hours</label><input id="trHours" type="number" step="0.5" style="width:100%" value="1">
+        <label class="small muted" style="margin-top:8px">Project / sub-project</label><select id="trProj" style="width:100%"><option value="">— none —</option>${projOptions}</select>
         <label class="small muted" style="margin-top:8px">Week (e.g. 2026-W44)</label><input id="trWeek" style="width:100%" placeholder="2026-W44">
         <div style="margin-top:10px"><button class="btn" onclick="addTime()">Add entry</button></div>
         <div id="trResult" class="small" style="margin-top:8px"></div>
@@ -738,12 +757,14 @@ async function renderTimeReport() {
       </table>
     </div>`;
 }
+async function setReportMode(mode) { await api('/reportmode', 'POST', { report_on: mode }); render(); }
 async function addTime() {
   const res = await api('/timereport/add', 'POST', {
     deliverable_id: document.getElementById('trDel').value,
     owner: document.getElementById('trOwner').value,
     hours: parseFloat(document.getElementById('trHours').value),
     week: document.getElementById('trWeek').value,
+    project_id: document.getElementById('trProj').value,
   });
   const out = document.getElementById('trResult');
   if (res.ok) { out.textContent = 'Logged ' + res.id; out.style.color = 'var(--green)'; setTimeout(render, 400); }
@@ -925,6 +946,7 @@ async function renderSettings() {
   const taskappsPanel = settingsTab === 'store' ? await renderTaskAppsSettings() : '';
   const usersPanel = settingsTab === 'users' ? await renderUsersSettings(prog.projects) : '';
   const errorLogPanel = settingsTab === 'store' ? await renderErrorLog() : '';
+  const rm = prog.report_on || 'deliverables';
   const SAP_PHASES = ['Discover', 'Prepare', 'Explore', 'Realize', 'Deploy', 'Run'];
   app.innerHTML = `
     <h2>Settings</h2>
@@ -933,6 +955,10 @@ async function renderSettings() {
       ${SETTINGS_TABS.map(([k, l]) => `<button class="btn ${settingsTab === k ? '' : 'ghost'}" onclick="settingsTab='${k}';render()">${l}</button>`).join('')}
     </div>
     ${settingsTab === 'store' ? `
+      <div class="panel" style="margin-bottom:16px"><h3>Time reporting level</h3>
+        <div class="small muted" style="margin-bottom:8px">Choose whether hours are reported per deliverable or per project / sub-project.</div>
+        <select onchange="setReportMode(this.value)"><option value="deliverables" ${rm === 'deliverables' ? 'selected' : ''}>Deliverables</option><option value="projects" ${rm === 'projects' ? 'selected' : ''}>Projects / sub-projects</option></select>
+      </div>
       <div class="panel"><h3>App store — enable or disable modules</h3>
         <table><tr><th>Module</th><th>Enabled</th></tr>
         ${mods.map(m => `<tr><td>${esc(m.label)}</td>
@@ -974,7 +1000,7 @@ async function renderSettings() {
       </div>
       <div class="panel">
         <h3>Projects (waves / rollouts)</h3>
-        <table><tr><th>ID</th><th>Project</th><th>Program phase</th><th>SAP Activate phase</th><th>Start</th><th>End</th><th>Status</th><th>Light</th></tr>
+        <table><tr><th>ID</th><th>Project</th><th>Program phase</th><th>SAP Activate phase</th><th>Start</th><th>End</th><th>Status</th><th>Light</th><th>Type</th></tr>
         ${prog.projects.map(p => `<tr><td class="small">${esc(p.id)}</td>
           <td><input value="${esc(p.name)}" onchange="updProject('${p.id}', this.value, null, null, null, null, null, null)"></td>
           <td><select onchange="updProject('${p.id}', null, this.value, null, null, null, null, null)">
@@ -986,7 +1012,9 @@ async function renderSettings() {
           <td><select onchange="updProject('${p.id}', null, null, null, null, null, this.value, null)">
             ${['planned','active','completed'].map(s => `<option ${s === p.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
           <td><select onchange="updProject('${p.id}', null, null, null, null, null, null, this.value)">
-            ${['green','amber','red'].map(s => `<option ${s === p.light ? 'selected' : ''}>${s}</option>`).join('')}</select></td></tr>`).join('')}
+            ${['green','amber','red'].map(s => `<option ${s === p.light ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+          <td><select onchange="updProjectType('${p.id}', this.value)">
+            ${['template','rollout','cell'].map(s => `<option ${s === p.project_type ? 'selected' : ''}>${s}</option>`).join('')}</select></td></tr>`).join('')}
         </table>
         <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
           <input id="newPrjName" placeholder="New project name">
@@ -1038,6 +1066,11 @@ async function addProject() {
   });
   if (res.ok) render();
 }
+async function updProjectType(id, type) {
+  const p = (await api('/program')).projects.find(x => x.id === id);
+  await api('/program/projects/update', 'POST', { id, name: p.name, program_phase_id: p.program_phase_id, sap_phase: p.sap_phase, start_date: p.start_date, end_date: p.end_date, status: p.status, light: p.light, project_type: type });
+  render();
+}
 async function updProject(id, name, phase, sap, start, end, status, light) {
   const p = (await api('/program')).projects.find(x => x.id === id);
   await api('/program/projects/update', 'POST', { id, name: name ?? p.name, program_phase_id: phase ?? p.program_phase_id,
@@ -1078,6 +1111,46 @@ async function deleteColumn(id) {
   await api('/kanban/columns/delete', 'POST', { id });
   render();
 }
+
+async function renderWbs() {
+  const [wbs, progs] = await Promise.all([api('/wbs'), api('/program')]);
+  const projName = Object.fromEntries(progs.projects.map(p => [p.id, p.name + ' (' + p.project_type + ')']));
+  const byProj = {};
+  wbs.forEach(w => (byProj[w.project_id] = byProj[w.project_id] || []).push(w));
+  const allDates = wbs.flatMap(w => [w.start_date, w.end_date]).filter(Boolean);
+  const min = allDates.sort()[0] || '2026-01-01';
+  const max = allDates.sort().reverse()[0] || '2027-12-31';
+  const span = (new Date(max) - new Date(min)) / 86400000 || 1;
+  const pct = d => Math.max(0, Math.min(100, (new Date(d) - new Date(min)) / 86400000 / span * 100));
+  const wdt = d => Math.max(1.5, (new Date(d) - new Date(min)) / 86400000 / span * 100);
+  const depth = w => w.parent_id ? (wbs.find(p => p.id === w.parent_id) ? 1 + depth(wbs.find(p => p.id === w.parent_id)) : 1) : 0;
+  app.innerHTML = `
+    <h2>WBS & Gantt</h2>
+    <div class="sub">Work breakdown structure per project — the bars below are the Gantt chart generated from the WBS</div>
+    ${Object.entries(byProj).map(([pid, items]) => `
+      <div class="panel" style="margin-bottom:16px">
+        <h3>${esc(projName[pid] || pid)} <span class="small muted">${esc(pid)}</span></h3>
+        <div style="margin-bottom:8px"><button class="btn ghost" onclick="wbsAdd('${pid}', '')">+ Add node</button></div>
+        ${items.sort((a, b) => a.code.localeCompare(b.code)).map(w => `
+          <div style="display:grid;grid-template-columns:${16 + depth(w) * 18}px 90px 1fr;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+            <div style="padding-left:${depth(w) * 18}px" class="small">${w.parent_id ? '└' : ''} ${esc(w.name)}</div>
+            <div class="small muted">${esc(w.code)}</div>
+            <div style="position:relative;height:16px;background:rgba(255,255,255,.06);border-radius:5px">
+              <div style="position:absolute;left:${pct(w.start_date)}%;width:${w.end_date ? wdt(w.end_date) : 2}%;top:0;height:100%;border-radius:5px;background:${w.parent_id ? 'linear-gradient(90deg,#6ea8ff,#cfa9ff)' : 'var(--purple)'}"></div>
+              <span class="small muted" style="position:absolute;left:${Math.min(pct(w.start_date) + (w.end_date ? wdt(w.end_date) : 2) + 1, 70)}%;top:0">${esc(w.start_date)} → ${esc(w.end_date)}</span>
+            </div>
+          </div>`).join('')}
+      </div>`).join('') || '<div class="panel muted">No WBS yet.</div>'}`;
+}
+async function wbsAdd(projectId, parentId) {
+  const name = prompt('Node name:'); if (!name) return;
+  const code = prompt('WBS code (e.g. 1.4):') || '';
+  const start = prompt('Start date (YYYY-MM-DD):') || '';
+  const end = prompt('End date (YYYY-MM-DD):') || '';
+  const res = await api('/wbs/add', 'POST', { project_id: projectId, parent_id: parentId, code, name, start_date: start, end_date: end });
+  if (res.ok) render();
+}
+
 async function gradeDel(id, grade) { await api('/deliverables/grade', 'POST', { id, grade }); }
 async function assignDel(id, field, value) { await api('/deliverables/assign', 'POST', { id, [field]: value }); }
 async function customizeReport(gateId) {
