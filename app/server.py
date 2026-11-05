@@ -39,6 +39,16 @@ def init_db():
     db.executescript(SCHEMA)
     seed(db)
     seed_columns(db)
+    # migrate program phases to the standard five on every start (existing DBs keep old rows otherwise)
+    db.executemany("INSERT OR REPLACE INTO program_phases VALUES (?,?,?,?,?)", [
+        ("PH-FORMULATE", "Program Formulation", "2025-10-01", "2026-01-31", 0),
+        ("PH-ORGANIZE", "Organization", "2026-02-01", "2026-05-31", 1),
+        ("PH-DEPLOY", "Deployment", "2026-06-01", "2026-12-31", 2),
+        ("PH-APPRAISE", "Appraisal", "2027-01-01", "2027-03-31", 3),
+        ("PH-DISSOLVE", "Dissolution", "2027-04-01", "2027-06-30", 4),
+    ])
+    db.execute("DELETE FROM program_phases WHERE id NOT IN ('PH-FORMULATE','PH-ORGANIZE','PH-DEPLOY','PH-APPRAISE','PH-DISSOLVE')")
+    db.commit()
     db.close()
 
 
