@@ -810,8 +810,10 @@ async function renderRoadmap() {
             <div class="small muted">${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
           </div>
           <div style="position:relative;min-height:44px;background:rgba(255,255,255,.04);border-radius:8px">
-            ${pd.map(d => `<span class="pill ${stateCls[d.state] || 'p-gray'}" title="${esc(d.id)} ${esc(d.title)} — due ${esc(d.due_date)}" style="position:absolute;left:${pct(d.due_date)}%;top:4px;transform:translateX(-50%);font-size:10.5px;white-space:nowrap">${esc(d.id)}</span>`).join('')}
-            ${pd.length ? '' : '<span class="small muted" style="position:absolute;left:8px;top:12px">no deliverables linked</span>'}
+            <div title="${esc(p.id)} ${esc(p.sap_phase)} · ${esc(p.start_date)} → ${esc(p.end_date)}" style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(3, pct(p.end_date) - pct(p.start_date))}%;top:14px;height:16px;border-radius:6px;background:linear-gradient(90deg,#6ea8ff,#cfa9ff);opacity:.85"></div>
+            <span class="pill p-purple" style="position:absolute;left:${Math.min(pct(p.start_date) + 2, 80)}%;top:2px;font-size:10px">SAP: ${esc(p.sap_phase)}</span>
+            ${pd.map(d => `<span class="pill ${stateCls[d.state] || 'p-gray'}" title="${esc(d.id)} ${esc(d.title)} — due ${esc(d.due_date)}" style="position:absolute;left:${pct(d.due_date)}%;top:32px;transform:translateX(-50%);font-size:10px;white-space:nowrap">${esc(d.id)}</span>`).join('')}
+            ${pd.length ? '' : ''}
           </div>
         </div>`;
         }).join('')}

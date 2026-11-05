@@ -432,24 +432,23 @@ def seed(db: sqlite3.Connection):
     cur.executemany("INSERT INTO time_entries VALUES (?,?,?,?,?,?)", [(t[0], t[1], t[2], t[3], t[4], "PRJ-01") for t in time_entries])
 
 
-    cur.executemany("INSERT INTO program_phases VALUES (?,?,?,?,?)", [
-        ("PH-DISCOVER", "Discover", "2025-10-01", "2025-12-15", 0),
-        ("PH-PREPARE", "Prepare", "2025-12-16", "2026-02-28", 1),
-        ("PH-EXPLORE", "Explore", "2026-03-01", "2026-05-29", 2),
-        ("PH-REALIZE", "Realize", "2026-06-01", "2026-11-30", 3),
-        ("PH-DEPLOY", "Deploy", "2026-12-01", "2027-02-15", 4),
-        ("PH-RUN", "Run", "2027-02-16", "2027-08-31", 5),
+    cur.executemany("INSERT OR REPLACE INTO program_phases VALUES (?,?,?,?,?)", [
+        ("PH-FORMULATE", "Program Formulation", "2025-10-01", "2026-01-31", 0),
+        ("PH-ORGANIZE", "Organization", "2026-02-01", "2026-05-31", 1),
+        ("PH-DEPLOY", "Deployment", "2026-06-01", "2026-12-31", 2),
+        ("PH-APPRAISE", "Appraisal", "2027-01-01", "2027-03-31", 3),
+        ("PH-DISSOLVE", "Dissolution", "2027-04-01", "2027-06-30", 4),
     ])
 
     cur.executemany("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?,?)", [
-        ("PRJ-01", "Wave 1 — HQ & 2 pilot countries", "PH-EXPLORE", "Explore", "2026-03-01", "2026-11-30", "active", "green", "rollout"),
-        ("PRJ-02", "Wave 2 — Northern Europe", "PH-REALIZE", "Realize", "2026-09-01", "2027-01-31", "planned", "amber", "rollout"),
+        ("PRJ-01", "Wave 1 — HQ & 2 pilot countries", "PH-FORMULATE", "Explore", "2026-03-01", "2026-11-30", "active", "green", "rollout"),
+        ("PRJ-02", "Wave 2 — Northern Europe", "PH-ORGANIZE", "Realize", "2026-09-01", "2027-01-31", "planned", "amber", "rollout"),
         ("PRJ-03", "Wave 3 — APAC & Americas", "PH-DEPLOY", "Deploy", "2026-12-01", "2027-02-15", "planned", "red", "rollout"),
     ])
 
     cur.executemany("INSERT OR IGNORE INTO projects VALUES (?,?,?,?,?,?,?,?,?)", [
-        ("PRJ-T1", "Global Template v1", "PH-EXPLORE", "Explore", "2026-03-01", "2026-10-30", "active", "green", "template"),
-        ("PRJ-C1", "Cell demo site", "PH-EXPLORE", "Explore", "2026-05-01", "2026-08-31", "planned", "green", "cell"),
+        ("PRJ-T1", "Global Template v1", "PH-FORMULATE", "Explore", "2026-03-01", "2026-10-30", "active", "green", "template"),
+        ("PRJ-C1", "Cell demo site", "PH-FORMULATE", "Explore", "2026-05-01", "2026-08-31", "planned", "green", "cell"),
     ])
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
     cur.execute("INSERT OR IGNORE INTO program_settings VALUES (1, 'green', 'deliverables')")
