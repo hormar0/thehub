@@ -536,7 +536,7 @@ async function renderRegister() {
     <div class="sub">Every deliverable, owned, graded and gated · evidence linked · ⋮ row menu for task apps & sharing</div>
     <div class="panel">
       <table>
-        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th>Grade</th><th>Responsible</th><th>Project</th><th></th></tr>
+        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th>Grade</th><th>Type</th><th>Responsible</th><th>Project</th><th></th></tr>
         ${dels.map(d => `<tr>
           <td class="small">${esc(d.id)}</td><td>${esc(d.title)}<div class="small muted">${esc(d.description)}</div></td>
           <td class="small">${esc(wsName[d.workstream_id] || d.workstream_id)}</td><td>${esc(d.owner)}</td>
@@ -546,6 +546,7 @@ async function renderRegister() {
           <td class="small">${esc(JSON.parse(d.dependency_ids).join(', ') || '—')}</td>
           <td class="small muted">${d.evidence_ref ? `<a href="#" onclick="return false" title="${esc(d.evidence_ref)}" style="color:#8ab8ff">${esc(d.evidence_ref)}</a>` : 'none cited'}</td>
           <td><select onchange="gradeDel('${d.id}', this.value)">${['','A','B','C','D','F'].map(g => `<option ${g===d.grade?'selected':''} value="${g}">${g||'—'}</option>`).join('')}</select></td>
+          <td><select onchange="updDelField('${d.id}', 'dtype', this.value)">${['task','milestone','document','report','other'].map(t => `<option ${t===d.dtype?'selected':''}>${t}</option>`).join('')}</select></td>
           <td><select onchange="assignDel('${d.id}', 'responsible_user', this.value)"><option value="">—</option>${userOptions.replace(`value="${d.responsible_user}"`, `value="${d.responsible_user}" selected`)}</select></td>
           <td><select onchange="assignDel('${d.id}', 'project_id', this.value)"><option value="">—</option>${projectOptions.replace(`value="${d.project_id}"`, `value="${d.project_id}" selected`)}</select></td>
           <td style="position:relative"><button class="kb-del" style="font-size:15px" title="Actions" onclick="openRowMenu(event, '${d.id}')">⋮</button>
@@ -563,6 +564,7 @@ async function renderRegister() {
     </div>`;
 }
 async function updDel(id, state) { await api('/deliverables/update', 'POST', { id, state }); if (currentView === 'dashboard') renderDashboard(); }
+async function updDelField(id, field, value) { await api('/deliverables/update', 'POST', { id, [field]: value }); }
 function _floatMenu(m, anchor) {
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect();
@@ -615,7 +617,7 @@ async function renderKanban() {
             const tags = (d.tags || '').split(',').map(t => t.trim()).filter(Boolean);
             return `
             <div class="kb-card" draggable="true" data-id="${esc(d.id)}">
-              <div class="kb-id">${esc(d.id)} · ${esc(d.gate_id)}${d.grade ? ' · ' + esc(d.grade) : ''} <span class="pill ${prioCls}" style="font-size:10px">${esc(d.priority || 'medium')}</span></div>
+              <div class="kb-id">${esc(d.id)} · ${esc(d.gate_id)}${d.grade ? ' · ' + esc(d.grade) : ''} <span class="pill ${prioCls}" style="font-size:10px">${esc(d.priority || 'medium')}</span> <span class="pill p-gray" style="font-size:10px">${esc(d.dtype || 'task')}</span></div>
               <div class="kb-title">${esc(d.title)}</div>
               ${tags.length ? `<div style="margin-bottom:4px">${tags.map(t => `<span class="pill p-purple" style="font-size:10px;margin-right:3px">${esc(t)}</span>`).join('')}</div>` : ''}
               <div class="kb-meta"><span>${esc(d.owner)}</span><span>${esc(wsName[d.workstream_id] || '')}</span><span>due ${esc(d.due_date)}</span></div>
@@ -893,6 +895,7 @@ async function renderTimeReport() {
   const t = await api('/timereport');
   const progs = await api('/program');
   const dels = await api('/deliverables');
+  window._dels = dels;
   const projOptions = progs.projects.map(p => `<option value="${p.id}">${esc(p.id)} ${esc(p.name)} (${esc(p.project_type)})</option>`).join('');
   const delOptions = dels.map(d => `<option value="${esc(d.id)}">${esc(d.id)} ${esc(d.title)}</option>`).join('');
   app.innerHTML = `
@@ -921,7 +924,7 @@ async function renderTimeReport() {
       
       <div class="panel">
         <h3>Log hours</h3>
-        <label class="small muted">Deliverable</label><select id="trDel" style="width:100%">${delOptions}</select>
+        <label class="small muted">Deliverable</label><select id="trDel" style="width:100%" onchange="autoProj()">${delOptions}</select>
         <label class="small muted" style="margin-top:8px">Owner</label><input id="trOwner" style="width:100%" placeholder="Name">
         <label class="small muted" style="margin-top:8px">Hours</label><input id="trHours" type="number" step="0.5" style="width:100%" value="1">
         <label class="small muted" style="margin-top:8px">Project / sub-project</label><select id="trProj" style="width:100%"><option value="">— none —</option>${projOptions}</select>
@@ -938,6 +941,10 @@ async function renderTimeReport() {
     </div>`;
 }
 async function setReportMode(mode) { await api('/reportmode', 'POST', { report_on: mode }); render(); }
+function autoProj() {
+  const d = window._dels ? window._dels.find(x => x.id === document.getElementById('trDel').value) : null;
+  if (d && d.project_id) document.getElementById('trProj').value = d.project_id;
+}
 async function addTime() {
   const res = await api('/timereport/add', 'POST', {
     deliverable_id: document.getElementById('trDel').value,

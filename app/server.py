@@ -298,8 +298,8 @@ def import_rows(db, kind: str, rows_in):
                 db.execute("UPDATE deliverables SET title=?, description=?, workstream_id=?, owner=?, gate_id=?, state=?, due_date=?, evidence_ref=?, dependency_ids=?, grade=?, responsible_user=?, project_id=? WHERE id=?",
                            (title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, get(r, "evidence_ref", "evidence"), deps or "[]", grade, resp, proj, did))
             else:
-                db.execute("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                           (did, title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, None, None, get(r, "evidence_ref", "evidence"), deps or "[]", grade, resp, proj, "medium", "", 0))
+                db.execute("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                           (did, title, get(r, "description"), ws, get(r, "owner") or "unassigned", gate, state, due, None, None, get(r, "evidence_ref", "evidence"), deps or "[]", grade, resp, proj, "medium", "", 0, "task"))
             imported += 1
     elif kind == "decisions":
         for r in rows_in[1:]:
@@ -577,12 +577,12 @@ class Handler(BaseHTTPRequestHandler):
                 ps = db.execute("SELECT report_on FROM program_settings WHERE id=1").fetchone()
                 return self._send(200, {"entries": entries, "by_owner": by_owner, "by_project": by_project, "report_on": ps["report_on"] if ps else "deliverables"})
             if path == "/api/calendar":
-                dels = rows(db.execute("SELECT id, title, due_date, state, priority, gate_id FROM deliverables WHERE due_date != ''"))
+                dels = rows(db.execute("SELECT id, title, due_date, state, priority, gate_id, dtype, project_id FROM deliverables WHERE due_date != ''"))
                 gates = rows(db.execute("SELECT id, name, scheduled_date, status FROM gates"))
                 wbs = rows(db.execute("SELECT id, name, start_date, end_date, project_id FROM wbs WHERE start_date != ''"))
                 return self._send(200, {"deliverables": dels, "gates": [{**g, "due_date": g["scheduled_date"]} for g in gates], "wbs": wbs})
             if path == "/api/gantt":
-                dels = rows(db.execute("SELECT id, title, owner, gate_id, state, due_date, dependency_ids, priority, tags, planned_hours, project_id FROM deliverables ORDER BY due_date"))
+                dels = rows(db.execute("SELECT id, title, owner, gate_id, state, due_date, dependency_ids, priority, tags, planned_hours, project_id, dtype FROM deliverables ORDER BY due_date"))
                 gates = rows(db.execute("SELECT id, name, scheduled_date, status FROM gates ORDER BY scheduled_date"))
                 return self._send(200, {"deliverables": dels, "gates": gates})
             if path == "/api/program":
@@ -696,9 +696,9 @@ class Handler(BaseHTTPRequestHandler):
                 d = db.execute("SELECT * FROM deliverables WHERE id=?", (body.get("id"),)).fetchone()
                 if not d:
                     return self._send(404, {"error": "deliverable not found"})
-                db.execute("UPDATE deliverables SET state=?, due_date=?, priority=?, tags=?, planned_hours=? WHERE id=?",
+                db.execute("UPDATE deliverables SET state=?, due_date=?, priority=?, tags=?, planned_hours=?, dtype=? WHERE id=?",
                            (body.get("state", d["state"]), body.get("due_date", d["due_date"]), body.get("priority", d["priority"]),
-                            body.get("tags", d["tags"]), float(body.get("planned_hours", d["planned_hours"])), body.get("id")))
+                            body.get("tags", d["tags"]), float(body.get("planned_hours", d["planned_hours"])), body.get("dtype", d["dtype"]), body.get("id")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/deliverables/assign":
