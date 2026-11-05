@@ -1,2 +1,4 @@
 app/milestonehub.db
 app/server.log
+__pycache__/
+*.pyc

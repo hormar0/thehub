@@ -124,8 +124,8 @@ def import_deliverables(db, rows):
             db.execute("UPDATE deliverables SET title=?, description=?, owner=?, gate_id=?, state=?, due_date=?, evidence_ref=?, project_id=? WHERE id=?",
                        (desc[:200], desc, owner, gate_id, status, due, ev_ref, proj_id, did))
         else:
-            db.execute("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                       (did, desc[:200], desc, "WS-CORE", owner, gate_id, status, due, None, None, ev_ref, "[]", "", "", proj_id))
+            db.execute("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                       (did, desc[:200], desc, "WS-CORE", owner, gate_id, status, due, None, None, ev_ref, "[]", "", "", proj_id, "medium", "", 0))
         n += 1
     db.commit()
     return n, skipped

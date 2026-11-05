@@ -36,7 +36,10 @@ CREATE TABLE IF NOT EXISTS deliverables (
     dependency_ids TEXT NOT NULL DEFAULT '[]',
     grade TEXT NOT NULL DEFAULT '',
     responsible_user TEXT NOT NULL DEFAULT '',
-    project_id TEXT NOT NULL DEFAULT ''
+    project_id TEXT NOT NULL DEFAULT '',
+    priority TEXT NOT NULL DEFAULT 'medium',   -- low | medium | high
+    tags TEXT NOT NULL DEFAULT '',             -- comma-separated
+    planned_hours REAL NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS conditions (
@@ -345,7 +348,7 @@ def seed(db: sqlite3.Connection):
          "WS-CUT", "D. Petrov", "C-005", "not_started", "2027-02-24", None, None,
          "", "[\"DEL-009\"]", "", "dpetrov", "PRJ-03"),
     ]
-    cur.executemany("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", deliverables)
+    cur.executemany("INSERT INTO deliverables VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [tuple(d) + ("medium", "", 0) for d in deliverables])
 
     conditions = [
         ("COND-01", "E-020", "Close top-3 blueprint gaps with named process owners before E-030",
