@@ -794,9 +794,10 @@ async function renderRoadmap() {
         <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;margin-bottom:6px">
           <div></div>
           <div style="position:relative;height:44px">
-            ${phases.map(p => `<div style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(4, pct(p.end_date) - pct(p.start_date))}%;top:0;height:100%;background:linear-gradient(90deg,rgba(110,168,255,.22),rgba(207,169,255,.14));border:1px solid rgba(140,175,255,.35);border-radius:8px;padding:4px 6px">
+            ${phases.map(p => `<div class="gbar gphase" data-phid="${esc(p.id)}" data-start="${esc(p.start_date)}" data-end="${esc(p.end_date)}" title="${esc(p.name)} — drag to move, drag right edge to extend" style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(4, pct(p.end_date) - pct(p.start_date))}%;top:0;height:100%;background:linear-gradient(90deg,rgba(110,168,255,.22),rgba(207,169,255,.14));border:1px solid rgba(140,175,255,.35);border-radius:8px;padding:4px 6px;cursor:grab">
               <div class="small" style="font-weight:700">${esc(p.name)}</div>
               <div class="muted" style="font-size:10.5px">${esc(p.start_date)} → ${esc(p.end_date)}</div>
+              <div class="gresize" style="position:absolute;right:-4px;top:0;width:8px;height:100%;cursor:ew-resize;border-radius:3px;background:rgba(255,255,255,.4)"></div>
             </div>`).join('')}
           </div>
         </div>
@@ -810,7 +811,9 @@ async function renderRoadmap() {
             <div class="small muted">${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
           </div>
           <div style="position:relative;min-height:44px;background:rgba(255,255,255,.04);border-radius:8px">
-            <div title="${esc(p.id)} ${esc(p.sap_phase)} · ${esc(p.start_date)} → ${esc(p.end_date)}" style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(3, pct(p.end_date) - pct(p.start_date))}%;top:14px;height:16px;border-radius:6px;background:linear-gradient(90deg,#6ea8ff,#cfa9ff);opacity:.85"></div>
+            <div class="gbar" data-pid="${esc(p.id)}" data-start="${esc(p.start_date)}" data-end="${esc(p.end_date)}" title="${esc(p.id)} — drag to move, drag right edge to extend" style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(3, pct(p.end_date) - pct(p.start_date))}%;top:14px;height:16px;border-radius:6px;background:linear-gradient(90deg,#6ea8ff,#cfa9ff);opacity:.9;cursor:grab">
+              <div class="gresize" style="position:absolute;right:-4px;top:0;width:8px;height:100%;cursor:ew-resize;border-radius:3px;background:rgba(255,255,255,.35)"></div>
+            </div>
             <span class="pill p-purple" style="position:absolute;left:${Math.min(pct(p.start_date) + 2, 80)}%;top:2px;font-size:10px">SAP: ${esc(p.sap_phase)}</span>
             ${pd.map(d => `<span class="pill ${stateCls[d.state] || 'p-gray'}" title="${esc(d.id)} ${esc(d.title)} — due ${esc(d.due_date)}" style="position:absolute;left:${pct(d.due_date)}%;top:32px;transform:translateX(-50%);font-size:10px;white-space:nowrap">${esc(d.id)}</span>`).join('')}
             ${pd.length ? '' : ''}
@@ -838,6 +841,53 @@ async function renderRoadmap() {
       <h3 style="margin-top:12px">Workstreams</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${r.workstreams.map(w => `<span class="pill p-purple">${esc(w.name)} (${esc(w.lead)})</span>`).join('')}</div>
     </div>`;
+  // drag/resize bars
+  const dayMs = 86400000;
+  const toDate = off => new Date(new Date(pmin).getTime() + off * span * dayMs).toISOString().slice(0, 10);
+  document.querySelectorAll('.gbar').forEach(bar => {
+    bar.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const resize = e.target.classList.contains('gresize');
+      const track = bar.parentElement.getBoundingClientRect();
+      const startX = e.clientX;
+      const origStart = bar.dataset.start, origEnd = bar.dataset.end;
+      const origLeft = parseFloat(bar.style.left), origWidth = parseFloat(bar.style.width);
+      const move = ev => {
+        const frac = (ev.clientX - startX) / track.width * 100;
+        if (resize) {
+          bar.style.width = Math.max(2, origWidth + frac) + '%';
+        } else {
+          bar.style.left = Math.max(0, Math.min(100 - origWidth, origLeft + frac)) + '%';
+        }
+      };
+      const up = async ev => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        const frac = (ev.clientX - startX) / track.width * 100;
+        let ns = origStart, ne = origEnd;
+        if (resize) {
+          ne = toDate((origEnd ? (new Date(origEnd) - new Date(pmin)) / dayMs / span : 0) + frac / 100);
+        } else {
+          const days = Math.round(frac / 100 * span);
+          ns = new Date(new Date(origStart).getTime() + days * dayMs).toISOString().slice(0, 10);
+          ne = new Date(new Date(origEnd).getTime() + days * dayMs).toISOString().slice(0, 10);
+        }
+        if (ns === origStart && ne === origEnd) return;
+        if (bar.dataset.pid) {
+          const p = r.projects.find(x => x.id === bar.dataset.pid);
+          await api('/program/projects/update', 'POST', { id: p.id, name: p.name, program_phase_id: p.program_phase_id, sap_phase: p.sap_phase, start_date: ns, end_date: ne, status: p.status, light: p.light, project_type: p.project_type });
+          toast(`${p.id}: ${ns} → ${ne}`);
+        } else if (bar.dataset.phid) {
+          const ph = phases.find(x => x.id === bar.dataset.phid);
+          await api('/program/phases/update', 'POST', { id: ph.id, name: ph.name, start_date: ns, end_date: ne });
+          toast(`${ph.name}: ${ns} → ${ne}`);
+        }
+        render();
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  });
 }
 async function renderTimeReport() {
   const t = await api('/timereport');
