@@ -208,22 +208,10 @@
     <button data-view="dashboard" class="active">Dashboard</button>
     <button data-view="gates">Gates</button>
     <button data-view="readiness">Readiness</button>
-    <button data-view="register">Register</button>
-    <button data-view="kanban">Kanban</button>
-    <button data-view="ledger">Decisions &amp; Conditions</button>
-    <button data-view="raid">RAID</button>
-    <button data-view="gantt">Gantt</button>
-    <button data-view="calendar">Calendar</button>
+    <button data-view="work">Work</button>
+    <button data-view="planning">Planning</button>
     <button data-view="roadmap">Roadmap</button>
-    <button data-view="timereport">Time Report</button>
-    <button data-view="wbs">WBS</button>
-    <button data-view="allocation">Allocation</button>
-    <button data-view="invoicing">Invoicing</button>
-    <button data-view="bookkeeping">Bookkeeping</button>
-    <button data-view="projaccounting">Proj. Accounting</button>
-    <button data-view="consolidation">Consolidation</button>
-    <button data-view="agents">AI Agents</button>
-    <button data-view="briefing">Briefing Pack</button>
+    <button data-view="more">More ▾</button>
   </nav>
   <button id="hamburger" title="Settings" style="margin-left:auto;background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1">☰</button>
   <div id="menu" style="display:none;position:absolute;top:44px;right:14px;background:linear-gradient(165deg, rgba(52,62,92,.85), rgba(22,28,48,.9));border:1px solid var(--glass-border);border-radius:14px;padding:8px;min-width:210px;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);z-index:30">
@@ -257,8 +245,9 @@ window.fetch = async function(...args) {
     throw e;
   }
 };
-const app = document.getElementById('app');
+let app = document.getElementById('app');
 let currentView = 'dashboard';
+let subView = 'register';
 let moduleMap = {};
 let settingsTab = 'store';
 async function api(path, method = 'GET', body = null) {
@@ -290,7 +279,7 @@ function condPill(s) {
 async function loadModules() {
   const mods = await api('/modules');
   moduleMap = Object.fromEntries(mods.map(m => [m.name, m]));
-  const viewFor = { decisions: 'ledger', risks: 'raid', gantt: 'gantt', kanban: 'kanban', timereport: 'timereport', agents: 'agents', allocation: 'allocation', invoicing: 'invoicing', bookkeeping: 'bookkeeping', projaccounting: 'projaccounting', consolidation: 'consolidation' };
+  const viewFor = {}; document.querySelectorAll('#nav button').forEach(() => {});
   document.querySelectorAll('#nav button').forEach(b => {
     const mod = Object.keys(viewFor).find(k => viewFor[k] === b.dataset.view);
     if (mod) b.style.display = moduleMap[mod] && moduleMap[mod].enabled ? '' : 'none';
@@ -325,23 +314,29 @@ async function render() {
   if (currentView === 'dashboard') return renderDashboard();
   if (currentView === 'gates') return renderGates();
   if (currentView === 'readiness') return renderReadiness();
-  if (currentView === 'register') return renderRegister();
-  if (currentView === 'kanban') return renderKanban();
-  if (currentView === 'ledger') return renderLedger();
-  if (currentView === 'raid') return renderRaid();
-  if (currentView === 'briefing') return renderBriefing();
   if (currentView === 'settings') return renderSettings();
-  if (currentView === 'gantt') return renderGantt();
-  if (currentView === 'calendar') return renderCalendar();
   if (currentView === 'roadmap') return renderRoadmap();
-  if (currentView === 'timereport') return renderTimeReport();
-  if (currentView === 'wbs') return renderWbs();
-  if (currentView === 'allocation') return renderAllocation();
-  if (currentView === 'invoicing') return renderPlaceholder('invoicing');
-  if (currentView === 'bookkeeping') return renderPlaceholder('bookkeeping');
-  if (currentView === 'projaccounting') return renderPlaceholder('projaccounting');
-  if (currentView === 'consolidation') return renderPlaceholder('consolidation');
-  if (currentView === 'agents') return renderAgents();
+  const SUB = { work: ['register', 'kanban'], planning: ['gantt', 'calendar', 'wbs'], more: ['ledger', 'raid', 'timereport', 'agents', 'briefing', 'allocation', 'invoicing', 'bookkeeping', 'projaccounting', 'consolidation'] };
+  if (SUB[currentView]) {
+    const sub = SUB[currentView].includes(subView) ? subView : SUB[currentView][0];
+    const labels = { register: 'Register', kanban: 'Kanban', gantt: 'Gantt', calendar: 'Calendar', wbs: 'WBS', ledger: 'Decisions & Conditions', raid: 'RAID', timereport: 'Time Report', agents: 'AI Agents', briefing: 'Briefing Pack', allocation: 'Allocation', invoicing: 'Invoicing', bookkeeping: 'Bookkeeping', projaccounting: 'Proj. Accounting', consolidation: 'Consolidation' };
+    app.innerHTML = `<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">${SUB[currentView].map(s => `<button class="btn ${s === sub ? '' : 'ghost'}" onclick="subView='${s}';render()">${labels[s]}</button>`).join('')}</div><div id="subview"></div>`;
+    app = document.getElementById('subview');
+    if (sub === 'register') await renderRegister();
+    else if (sub === 'kanban') await renderKanban();
+    else if (sub === 'gantt') await renderGantt();
+    else if (sub === 'calendar') await renderCalendar();
+    else if (sub === 'wbs') await renderWbs();
+    else if (sub === 'ledger') await renderLedger();
+    else if (sub === 'raid') await renderRaid();
+    else if (sub === 'timereport') await renderTimeReport();
+    else if (sub === 'agents') await renderAgents();
+    else if (sub === 'briefing') await renderBriefing();
+    else if (sub === 'allocation') await renderAllocation();
+    else await renderPlaceholder(sub);
+    app = document.getElementById('app');
+    return;
+  }
 }
 function lightDot(l, lg) { return `<span class="tl tl-${esc(l||'green')}${lg?' tl-lg':''}" title="${esc(l||'green')}"></span>`; }
 async function setProjectLight(id, light) { await api('/light/project', 'POST', { id, light }); render(); }
@@ -778,49 +773,68 @@ async function renderCalendar() {
     </div>`;
 }
 async function renderRoadmap() {
-  const r = await api('/roadmap');
-  const n = r.phases.length;
-  const phasesLine = r.phases.map(p => p.name).join(' → ');
+  const [r, dels, readiness] = await Promise.all([api('/roadmap'), api('/deliverables'), api('/readiness')]);
+  const phases = r.phases;
+  const pmin = phases[0].start_date, pmax = phases[phases.length - 1].end_date;
+  const span = (new Date(pmax) - new Date(pmin)) / 86400000 || 1;
+  const pct = d => Math.max(0, Math.min(100, (new Date(d) - new Date(pmin)) / 86400000 / span * 100));
+  const stateCls = { verified: 'p-green', in_review: 'p-purple', in_progress: 'p-amber', blocked: 'p-red', not_started: 'p-gray' };
+  const delByProj = {};
+  dels.forEach(d => (delByProj[d.project_id || '(none)'] = delByProj[d.project_id || '(none)'] || []).push(d));
+  const gateByPhase = {};
+  r.gates.forEach(g => {
+    const ph = phases.find(p => g.scheduled_date >= p.start_date && g.scheduled_date <= p.end_date);
+    (gateByPhase[ph ? ph.id : 'later'] = gateByPhase[ph ? ph.id : 'later'] || []).push(g);
+  });
   app.innerHTML = `
-    <h2>Program Overview & Milestone Schedule</h2>
-    <div class="sub">Workstream swimlanes × phases · milestone roadmap · traffic lights per project</div>
-    <div class="panel" style="margin-bottom:16px">
-      <h3>Workstreams</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${r.workstreams.map(w => `<span class="pill p-purple">${esc(w.name)} (${esc(w.lead)})</span>`).join('')}
+    <h2>Program Roadmap</h2>
+    <div class="sub">Phases on a timeline · projects as rows with their deliverables and gates · traffic light per project · MRF band per gate</div>
+    <div class="panel" style="overflow-x:auto">
+      <div style="min-width:900px">
+        <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;margin-bottom:6px">
+          <div></div>
+          <div style="position:relative;height:44px">
+            ${phases.map(p => `<div style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(4, pct(p.end_date) - pct(p.start_date))}%;top:0;height:100%;background:linear-gradient(90deg,rgba(110,168,255,.22),rgba(207,169,255,.14));border:1px solid rgba(140,175,255,.35);border-radius:8px;padding:4px 6px">
+              <div class="small" style="font-weight:700">${esc(p.name)}</div>
+              <div class="muted" style="font-size:10.5px">${esc(p.start_date)} → ${esc(p.end_date)}</div>
+            </div>`).join('')}
+          </div>
+        </div>
+        ${r.projects.map(p => {
+          const pd = delByProj[p.id] || [];
+          return `
+        <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.07);align-items:center">
+          <div>
+            <div style="display:flex;align-items:center;gap:7px"><span class="tl tl-${p.light}"></span><b>${esc(p.id)}</b><span class="small muted">${esc(p.project_type)}</span></div>
+            <div class="small muted">${esc(p.name)}</div>
+            <div class="small muted">${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
+          </div>
+          <div style="position:relative;min-height:44px;background:rgba(255,255,255,.04);border-radius:8px">
+            ${pd.map(d => `<span class="pill ${stateCls[d.state] || 'p-gray'}" title="${esc(d.id)} ${esc(d.title)} — due ${esc(d.due_date)}" style="position:absolute;left:${pct(d.due_date)}%;top:4px;transform:translateX(-50%);font-size:10.5px;white-space:nowrap">${esc(d.id)}</span>`).join('')}
+            ${pd.length ? '' : '<span class="small muted" style="position:absolute;left:8px;top:12px">no deliverables linked</span>'}
+          </div>
+        </div>`;
+        }).join('')}
+        <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.07)">
+          <div><b>Gates</b><div class="small muted"> ◆ with MRF band </div></div>
+          <div style="position:relative;min-height:40px;background:rgba(255,255,255,.04);border-radius:8px">
+            ${r.gates.map(g => `<span title="${esc(g.id)} ${esc(g.name)} · ${esc(g.status)} · MRF ${readiness[g.id] ? readiness[g.id].score + '/100 ' + readiness[g.id].band : ''}" style="position:absolute;left:${pct(g.scheduled_date)}%;top:6px;transform:translateX(-50%);font-size:11px;white-space:nowrap">◆ ${esc(g.id)} <span class="tl tl-${readiness[g.id] ? readiness[g.id].band : 'gray'}" style="width:9px;height:9px"></span></span>`).join('')}
+          </div>
+        </div>
       </div>
-      <h3 style="margin-top:14px">Phases</h3>
-      <div class="muted">${phasesLine}</div>
     </div>
-    <div class="panel" style="margin-bottom:16px">
-      <h3>Workstream × phase grid</h3>
-      <div style="display:grid;grid-template-columns:160px repeat(${n},1fr);gap:4px;align-items:center">
-        <div></div>
-        ${r.phases.map(p => `<div class="small" style="text-align:center;font-weight:700;padding:6px;background:rgba(140,175,255,.15);border-radius:8px">${esc(p.name)}</div>`).join('')}
-        ${r.workstreams.map(w => `
-          <div class="small" style="font-weight:600">${esc(w.name)}</div>
-          ${r.phases.map(p => `<div style="height:34px;border-radius:8px;background:${w.id==='WS-CORE'||w.id==='WS-CUT'?'linear-gradient(90deg,#6ea8ff33,#cfa9ff22)':'rgba(255,255,255,.05)'};border:1px solid var(--glass-border)"></div>`).join('')}
-        `).join('')}
-      </div>
-    </div>
-    <div class="panel">
-      <h3>Projects — traffic light</h3>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:8px">
-        ${r.projects.map(p => `<div style="border:1px solid var(--glass-border);border-radius:12px;padding:10px">
-          <div style="display:flex;align-items:center;gap:8px"><strong>${esc(p.id)}</strong> ${lightDot(p.light)} <span class="small muted">${esc(p.status)}</span></div>
-          <div class="small">${esc(p.name)}</div>
-          <div class="small" style="margin-top:6px">${lightPicker(p.light, 'function(l){setProjectLight(\'' + p.id + '\',l)}')}</div>
-        </div>`).join('')}
-      </div>
-      <h3 style="margin-top:16px">Program traffic light: ${lightDot(r.program_light, true)} ${lightPicker(r.program_light, 'setProgramLight')}</h3>
-      <h3 style="margin-top:16px">Milestones roadmap</h3>
+    <div class="panel" style="margin-top:16px">
+      <h3>Milestones roadmap</h3>
       ${r.milestones.map(m => `
         <div style="display:grid;grid-template-columns:90px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)">
           <div style="font-weight:700;color:#8ab8ff">[${esc(m.label)}]</div>
           <div><b>${esc(m.title)}</b>${m.details ? `<div class="small muted">${esc(m.details)}</div>` : ''}</div>
         </div>`).join('')}
-      <h3 style="margin-top:16px">Gates</h3>
-      ${r.gates.map(g => `<div class="small" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">${esc(g.id)} · ${esc(g.scheduled_date)} · ${esc(g.name)} — <span class="muted">${esc(g.status)}</span> · <a href="/report/${g.id}" target="_blank" style="color:#8ab8ff">report</a></div>`).join('')}
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>Program traffic light: ${lightDot(r.program_light, true)} ${lightPicker(r.program_light, 'setProgramLight')}</h3>
+      <h3 style="margin-top:12px">Workstreams</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${r.workstreams.map(w => `<span class="pill p-purple">${esc(w.name)} (${esc(w.lead)})</span>`).join('')}</div>
     </div>`;
 }
 async function renderTimeReport() {
