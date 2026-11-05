@@ -851,15 +851,17 @@ async function renderRoadmap() {
   const dayMs = 86400000;
   const toDate = off => new Date(new Date(pmin).getTime() + off * span * dayMs).toISOString().slice(0, 10);
   document.querySelectorAll('.gbar').forEach(bar => {
-    bar.addEventListener('mousedown', e => {
+    const onDown = e => {
+      const pt = e.touches ? e.touches[0] : e;
       e.preventDefault();
-      const resize = e.target.classList.contains('gresize');
+      const resize = (e.target.classList && e.target.classList.contains('gresize'));
       const track = bar.parentElement.getBoundingClientRect();
-      const startX = e.clientX;
+      const startX = pt.clientX;
       const origStart = bar.dataset.start, origEnd = bar.dataset.end;
       const origLeft = parseFloat(bar.style.left), origWidth = parseFloat(bar.style.width);
       const move = ev => {
-        const frac = (ev.clientX - startX) / track.width * 100;
+        const pt = ev.touches ? ev.touches[0] : ev;
+        const frac = (pt.clientX - startX) / track.width * 100;
         if (resize) {
           bar.style.width = Math.max(2, origWidth + frac) + '%';
         } else {
@@ -867,9 +869,12 @@ async function renderRoadmap() {
         }
       };
       const up = async ev => {
+        const pt = ev.changedTouches ? ev.changedTouches[0] : ev;
         document.removeEventListener('mousemove', move);
         document.removeEventListener('mouseup', up);
-        const frac = (ev.clientX - startX) / track.width * 100;
+        document.removeEventListener('touchmove', move);
+        document.removeEventListener('touchend', up);
+        const frac = (pt.clientX - startX) / track.width * 100;
         let ns = origStart, ne = origEnd;
         if (resize) {
           ne = toDate((origEnd ? (new Date(origEnd) - new Date(pmin)) / dayMs / span : 0) + frac / 100);
@@ -892,7 +897,11 @@ async function renderRoadmap() {
       };
       document.addEventListener('mousemove', move);
       document.addEventListener('mouseup', up);
-    });
+      document.addEventListener('touchmove', move, { passive: false });
+      document.addEventListener('touchend', up);
+    };
+    bar.addEventListener('mousedown', onDown);
+    bar.addEventListener('touchstart', onDown, { passive: false });
   });
 }
 async function renderTimeReport() {
