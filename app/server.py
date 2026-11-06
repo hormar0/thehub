@@ -62,7 +62,14 @@ def init_db():
         ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell"),
         ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell"),
     ])
-    db.execute("DELETE FROM projects WHERE id LIKE 'PRJ-0%' OR id = 'PRJ-T1'")
+    old_ids = [r["id"] for r in db.execute("SELECT id FROM projects WHERE id LIKE 'PRJ-0%' OR id = 'PRJ-T1'")]
+    if old_ids:
+        q = ",".join("?" * len(old_ids))
+        db.execute(f"UPDATE deliverables SET project_id='' WHERE project_id IN ({q})", old_ids)
+        db.execute(f"UPDATE users SET project_id='' WHERE project_id IN ({q})", old_ids)
+        db.execute(f"UPDATE time_entries SET project_id='' WHERE project_id IN ({q})", old_ids)
+        db.execute(f"DELETE FROM wbs WHERE project_id IN ({q})", old_ids)
+        db.execute(f"DELETE FROM projects WHERE id IN ({q})", old_ids)
     db.commit()
     db.close()
 
