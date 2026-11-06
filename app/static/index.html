@@ -171,6 +171,10 @@
   .tl-amber { background:#d29922; box-shadow:0 0 8px rgba(210,153,34,.8); }
   .tl-red { background:#f85149; box-shadow:0 0 8px rgba(248,81,73,.8); }
   .tl-lg { width:20px; height:20px; }
+  .rag-outline { border-width: 2px; }
+  .rag-green { border-color: rgba(63,185,80,.75); box-shadow: 0 0 18px rgba(63,185,80,.28), 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-highlight); }
+  .rag-amber { border-color: rgba(210,153,34,.75); box-shadow: 0 0 18px rgba(210,153,34,.28), 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-highlight); }
+  .rag-red { border-color: rgba(248,81,73,.8); box-shadow: 0 0 18px rgba(248,81,73,.32), 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-highlight); }
   .gbar { touch-action: none; }
 
   /* Tablet landscape (e.g. 1024x768 … 1366x768) */
@@ -353,13 +357,19 @@ async function renderDashboard() {
     <h2>Program Dashboard</h2>
     <div class="sub">Assembled from the record · ${esc(d.today)}</div>
     <div class="grid cards">
-      <div class="card" style="cursor:pointer" onclick="currentView='roadmap';render()" title="Program status — click to open Roadmap">
-        <div class="kpi" style="display:flex;align-items:center;gap:10px">${lightDot(d.program_light, true)} <span style="font-size:14px">Program</span></div>
-        <div class="lbl">Traffic light ${lightPicker(d.program_light, 'setProgramLight')} · click for roadmap</div>
+      <div class="card" style="cursor:pointer;border-color:rgba(140,175,255,.5)" onclick="currentView='roadmap';render()" title="Program — click for roadmap">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="tl ${d.program_light === 'green' ? 'tl-green' : d.program_light === 'amber' ? 'tl-amber' : 'tl-red'} tl-lg"></span>
+          <div><div style="font-weight:700">Program</div><div class="lbl">${lightPicker(d.program_light, 'setProgramLight')} · click card for roadmap</div></div>
+        </div>
       </div>
-      ${d.projects.map(p => `<div class="card" style="cursor:pointer" onclick="currentView='roadmap';render()">
-        <div class="kpi" style="display:flex;align-items:center;gap:8px;font-size:16px">${lightDot(p.light)} ${esc(p.id)}</div>
-        <div class="lbl">${esc(p.name)} · ${p.deliverable_count} deliverables · ${esc(p.status)} ${lightPicker(p.light, 'function(l){setProjectLight(\'' + p.id + '\',l)}')}</div>
+      ${d.projects.map(p => `
+      <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer" onclick="currentView='roadmap';render()">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <b>${esc(p.id)}</b><span class="small muted">${esc(p.project_type)}</span>
+        </div>
+        <div class="lbl" style="margin-top:2px">${esc(p.name)}</div>
+        <div class="lbl">${p.deliverable_count} deliverables · ${esc(p.status)} · ${esc(p.sap_phase)}</div>
       </div>`).join('')}
       <div class="card"><div class="kpi">${r ? r.pct + '%' : '—'}</div><div class="lbl">Evidence readiness · next gate ${esc(g?.id)}</div></div>
       <div class="card"><div class="kpi">${d.counts.open_conditions}</div><div class="lbl">Open gate conditions ${d.counts.overdue_conditions ? `(${d.counts.overdue_conditions} overdue)` : ''}</div></div>
