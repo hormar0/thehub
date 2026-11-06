@@ -48,6 +48,21 @@ def init_db():
         ("PH-DISSOLVE", "Dissolution", "2027-04-01", "2027-06-30", 4),
     ])
     db.execute("DELETE FROM program_phases WHERE id NOT IN ('PH-FORMULATE','PH-ORGANIZE','PH-DEPLOY','PH-APPRAISE','PH-DISSOLVE')")
+    # migrate projects to the rollout/cell set on every start
+    db.executemany("INSERT OR REPLACE INTO projects VALUES (?,?,?,?,?,?,?,?,?)", [
+        ("PRJ-R1", "Factory China", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout"),
+        ("PRJ-R2", "Planning Gallin", "PH-ORGANIZE", "Realize", "2026-03-01", "2026-10-30", "active", "amber", "rollout"),
+        ("PRJ-R3", "Market Western Europe", "PH-DEPLOY", "Deploy", "2026-07-01", "2026-12-31", "planned", "green", "rollout"),
+        ("PRJ-R4", "Version 2 North America", "PH-DEPLOY", "Deploy", "2026-09-01", "2027-02-28", "planned", "amber", "rollout"),
+        ("PRJ-C1", "Data Migration", "PH-ORGANIZE", "Realize", "2026-02-15", "2026-06-30", "active", "green", "cell"),
+        ("PRJ-C2", "Testing", "PH-DEPLOY", "Realize", "2026-06-01", "2026-11-30", "planned", "amber", "cell"),
+        ("PRJ-C3", "Cut over", "PH-DEPLOY", "Deploy", "2026-11-01", "2027-01-31", "planned", "red", "cell"),
+        ("PRJ-C4", "Hypercare", "PH-APPRAISE", "Deploy", "2027-02-01", "2027-03-31", "planned", "green", "cell"),
+        ("PRJ-C5", "Authorization", "PH-ORGANIZE", "Explore", "2026-03-01", "2026-07-31", "planned", "green", "cell"),
+        ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell"),
+        ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell"),
+    ])
+    db.execute("DELETE FROM projects WHERE id LIKE 'PRJ-0%' OR id = 'PRJ-T1'")
     db.commit()
     db.close()
 

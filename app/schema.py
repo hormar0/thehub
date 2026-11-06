@@ -442,15 +442,19 @@ def seed(db: sqlite3.Connection):
     ])
 
     cur.executemany("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?,?)", [
-        ("PRJ-01", "Wave 1 — HQ & 2 pilot countries", "PH-FORMULATE", "Explore", "2026-03-01", "2026-11-30", "active", "green", "rollout"),
-        ("PRJ-02", "Wave 2 — Northern Europe", "PH-ORGANIZE", "Realize", "2026-09-01", "2027-01-31", "planned", "amber", "rollout"),
-        ("PRJ-03", "Wave 3 — APAC & Americas", "PH-DEPLOY", "Deploy", "2026-12-01", "2027-02-15", "planned", "red", "rollout"),
+        ("PRJ-R1", "Factory China", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout"),
+        ("PRJ-R2", "Planning Gallin", "PH-ORGANIZE", "Realize", "2026-03-01", "2026-10-30", "active", "amber", "rollout"),
+        ("PRJ-R3", "Market Western Europe", "PH-DEPLOY", "Deploy", "2026-07-01", "2026-12-31", "planned", "green", "rollout"),
+        ("PRJ-R4", "Version 2 North America", "PH-DEPLOY", "Deploy", "2026-09-01", "2027-02-28", "planned", "amber", "rollout"),
+        ("PRJ-C1", "Data Migration", "PH-ORGANIZE", "Realize", "2026-02-15", "2026-06-30", "active", "green", "cell"),
+        ("PRJ-C2", "Testing", "PH-DEPLOY", "Realize", "2026-06-01", "2026-11-30", "planned", "amber", "cell"),
+        ("PRJ-C3", "Cut over", "PH-DEPLOY", "Deploy", "2026-11-01", "2027-01-31", "planned", "red", "cell"),
+        ("PRJ-C4", "Hypercare", "PH-APPRAISE", "Deploy", "2027-02-01", "2027-03-31", "planned", "green", "cell"),
+        ("PRJ-C5", "Authorization", "PH-ORGANIZE", "Explore", "2026-03-01", "2026-07-31", "planned", "green", "cell"),
+        ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell"),
+        ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell"),
     ])
 
-    cur.executemany("INSERT OR IGNORE INTO projects VALUES (?,?,?,?,?,?,?,?,?)", [
-        ("PRJ-T1", "Global Template v1", "PH-FORMULATE", "Explore", "2026-03-01", "2026-10-30", "active", "green", "template"),
-        ("PRJ-C1", "Cell demo site", "PH-FORMULATE", "Explore", "2026-05-01", "2026-08-31", "planned", "green", "cell"),
-    ])
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
     cur.execute("INSERT OR IGNORE INTO program_settings VALUES (1, 'green', 'deliverables')")
     cur.execute("INSERT OR IGNORE INTO mistral_config VALUES (1, '', 'mistral-large-latest', 'https://api.mistral.ai/v1', 0)")
@@ -538,13 +542,12 @@ def seed(db: sqlite3.Connection):
     ])
 
     cur.executemany("INSERT INTO wbs VALUES (?,?,?,?,?,?,?)", [
-        ("WBS-01", "PRJ-01", "", "1", "Wave 1 — HQ & 2 pilot countries", "2026-03-01", "2026-11-30"),
-        ("WBS-01-1", "PRJ-01", "WBS-01", "1.1", "Design & blueprint", "2026-03-01", "2026-06-30"),
-        ("WBS-01-2", "PRJ-01", "WBS-01", "1.2", "Build & configure", "2026-07-01", "2026-10-15"),
-        ("WBS-01-3", "PRJ-01", "WBS-01", "1.3", "Test & cutover", "2026-10-16", "2026-11-30"),
-        ("WBS-T1", "PRJ-T1", "", "1", "Global Template v1", "2026-03-01", "2026-10-30"),
-        ("WBS-T1-1", "PRJ-T1", "WBS-T1", "1.1", "Template design", "2026-03-01", "2026-07-31"),
-        ("WBS-T1-2", "PRJ-T1", "WBS-T1", "1.2", "Template build & validation", "2026-08-01", "2026-10-30"),
+        ("WBS-R1", "PRJ-R1", "", "1", "Factory China", "2026-02-01", "2026-08-31"),
+        ("WBS-R1-1", "PRJ-R1", "WBS-R1", "1.1", "Design & blueprint", "2026-02-01", "2026-05-31"),
+        ("WBS-R1-2", "PRJ-R1", "WBS-R1", "1.2", "Build & configure", "2026-06-01", "2026-08-15"),
+        ("WBS-C1", "PRJ-C1", "", "1", "Data Migration", "2026-02-15", "2026-06-30"),
+        ("WBS-C2", "PRJ-C2", "", "1", "Testing", "2026-06-01", "2026-11-30"),
+        ("WBS-C3", "PRJ-C3", "", "1", "Cut over", "2026-11-01", "2027-01-31"),
     ])
     db.commit()
 
