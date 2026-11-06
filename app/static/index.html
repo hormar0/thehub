@@ -389,7 +389,42 @@ async function renderDashboard() {
         <h3>Needs your attention — signal, not noise</h3>
         ${d.attention.length ? d.attention.map(a => `<div class="att">${esc(a)}</div>`).join('') : '<div class="muted">Nothing flagged.</div>'}
       </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>💬 Ask The Hub</h3>
+      <div class="small muted" style="margin-bottom:10px">Ask about milestones, gates, deliverables, risks, decisions, projects — e.g. "what is the next milestone status?", "what are my deliverables?", "show my risks". Your name: <input id="chatUser" placeholder="e.g. A. Reinhart" style="width:150px" value="${esc(window._chatUser || '')}"> <span class="muted" id="chatVia"></span></div>
+      <div id="chatLog" style="max-height:260px;overflow-y:auto;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <input id="chatMsg" style="flex:1" placeholder="Ask about milestone status, my deliverables, risks…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn" onclick="sendChat()">Send</button>
+      </div>
     </div>`;
+  const log = document.getElementById('chatLog');
+  (window._chat || []).forEach(m => log.appendChild(chatBubble(m)));
+}
+function chatBubble(m) {
+  const div = document.createElement('div');
+  div.style.cssText = 'margin-bottom:8px;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.5;white-space:pre-wrap;' +
+    (m.role === 'user' ? 'background:rgba(140,175,255,.18);border:1px solid rgba(140,175,255,.35);text-align:right' : 'background:rgba(255,255,255,.06);border:1px solid var(--glass-border)');
+  div.textContent = (m.role === 'user' ? 'You: ' : 'The Hub: ') + m.text + (m.via ? `  (${m.via})` : '');
+  return div;
+}
+async function sendChat() {
+  const input = document.getElementById('chatMsg');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  window._chatUser = document.getElementById('chatUser').value;
+  window._chat = window._chat || [];
+  window._chat.push({ role: 'user', text: msg });
+  const log = document.getElementById('chatLog');
+  log.appendChild(chatBubble({ role: 'user', text: msg }));
+  log.scrollTop = log.scrollHeight;
+  const res = await api('/chat', 'POST', { message: msg, user: window._chatUser || '' });
+  const entry = { role: 'hub', text: res.reply || res.error || 'no answer', via: res.via || '' };
+  window._chat.push(entry);
+  log.appendChild(chatBubble(entry));
+  log.scrollTop = log.scrollHeight;
 }
 async function renderGates() {
   const gates = await api('/gates');

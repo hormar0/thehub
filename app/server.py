@@ -358,6 +358,33 @@ def _http_json(method, url, token, payload):
 
 
 
+def local_chat_answer(ctx, msg):
+    m = msg.lower()
+    if "my" in m and "deliverable" in m:
+        items = ctx["my_deliverables"]
+        return ("You have %d deliverables: " % len(items)) + (", ".join(f"{d['id']} {d['title']} ({d['state']}, due {d['due_date']})" for d in items[:8]) or "none") if items else "No deliverables found under your name — tell me your name in the chat header."
+    if "my" in m and ("risk" in m or "raid" in m):
+        items = ctx["my_risks"]
+        return ("Your risks: " + ", ".join(f"{r['id']} {r['title']} [{r['severity']}/{r['status']}]" for r in items[:8])) if items else "No RAID items under your name."
+    if "milestone" in m or "gate" in m or "status" in m:
+        g = ctx["next_gate"]
+        scores = ", ".join(f"{k}:{v['score']}{v['band'][0].upper()}" for k, v in list(ctx["mrf_scores"].items())[:8])
+        return (f"Next gate: {g['id']} {g['name']} on {g['scheduled_date']} ({g['status']}). "
+                f"Program light: {ctx['program_light']}. Open conditions: {ctx['counts']['open_conditions']}, open decisions: {ctx['counts']['open_decisions']}, blocked deliverables: {ctx['counts']['blocked_deliverables']}. MRF scores: {scores}. Attention: {'; '.join(ctx['attention'][:3]) or 'none'}.")
+    if "deliver" in m or "readiness" in m:
+        by = {}
+        for d in ctx["deliverables"]:
+            by[d["state"]] = by.get(d["state"], 0) + 1
+        return "Deliverables by state: " + ", ".join(f"{k}: {v}" for k, v in by.items()) + f". Total {len(ctx['deliverables'])}."
+    if "risk" in m or "raid" in m:
+        hi = [r for r in ctx["raid"] if r["severity"] in ("high", "very_high")]
+        return f"{len(ctx['raid'])} RAID items, {len(hi)} high/very-high: " + "; ".join(f"{r['id']} {r['title']}" for r in hi[:5])
+    if "project" in m:
+        return "Projects: " + "; ".join(f"{p['id']} {p['name']} [{p['project_type']}, SAP {p['sap_phase']}, {p['light']}]" for p in ctx["projects"])
+    return (f"The Hub today ({ctx['today']}): program light {ctx['program_light']}, next gate {ctx['next_gate']['id']} ({ctx['next_gate']['status']}), "
+            f"{len(ctx['deliverables'])} deliverables, {len(ctx['raid'])} RAID items, {len(ctx['open_decisions'])} open decisions, {len(ctx['projects'])} projects. Ask about milestones, deliverables, risks, projects, or 'my deliverables'.")
+
+
 def _mistral_chat(api_key, base_url, model, system, user):
     payload = {"model": model, "messages": [
         {"role": "system", "content": system},
@@ -808,6 +835,37 @@ class Handler(BaseHTTPRequestHandler):
                     log_error(db, "ERROR", "agents/run", e, traceback.format_exc())
                     return self._send(502, {"error": str(e)})
                 return self._send(200, {"ok": True, "agent": name, "model": cfg["model"], "reply": reply})
+            if path == "/api/chat":
+                msg = (body.get("message") or "").strip()
+                user = (body.get("user") or "").strip()
+                if not msg:
+                    return self._send(400, {"error": "empty message"})
+                dash = build_dashboard(db)
+                gates = rows(db.execute("SELECT id, name, status, scheduled_date FROM gates ORDER BY scheduled_date"))
+                mrf = {g["id"]: mrf_compute(db, g["id"]) for g in db.execute("SELECT id FROM gates")}
+                dels = rows(db.execute("SELECT id, title, owner, gate_id, state, due_date, dtype, priority, project_id FROM deliverables ORDER BY due_date"))
+                raid = rows(db.execute("SELECT id, type, title, severity, status, owner FROM raid ORDER BY raised_date DESC"))
+                decs = rows(db.execute("SELECT id, title, status, owner, needed_by FROM decisions WHERE status IN ('open','escalated')"))
+                projects = rows(db.execute("SELECT id, name, project_type, sap_phase, start_date, end_date, status, light FROM projects ORDER BY start_date"))
+                mine_dels = [d for d in dels if user and user.lower() in d["owner"].lower()]
+                mine_risks = [r for r in raid if user and user.lower() in r["owner"].lower()]
+                ctx = {"today": dash["today"], "program_light": dash["program_light"], "counts": dash["counts"],
+                       "attention": dash["attention"], "next_gate": dash["next_gate"],
+                       "gates": gates, "mrf_scores": {k: {"score": v["score"], "band": v["band"], "outcome": v["outcome"]} for k, v in mrf.items()},
+                       "projects": projects, "deliverables": dels, "raid": raid, "open_decisions": decs,
+                       "my_deliverables": mine_dels, "my_risks": mine_risks, "asked_by": user}
+                cfg = db.execute("SELECT * FROM mistral_config WHERE id=1").fetchone()
+                if cfg and cfg["api_key"]:
+                    system = ("You are the assistant inside The Hub, a program control center. Answer questions about milestones/gates, "
+                              "deliverables, risks, decisions, projects and time reporting using ONLY the Hub context JSON provided. "
+                              "Be concise, cite ids (DEL-, M-, RAID-, DEC-). If asked 'my' items, use my_deliverables/my_risks. If data is missing, say so. Hub context: " + json.dumps(ctx, ensure_ascii=False)[:6000])
+                    try:
+                        reply = _mistral_chat(cfg["api_key"], cfg["base_url"], cfg["model"], system, msg)
+                        return self._send(200, {"ok": True, "reply": reply, "via": cfg["model"]})
+                    except Exception as e:
+                        log_error(db, "ERROR", "chat", e, traceback.format_exc())
+                        return self._send(200, {"ok": True, "reply": local_chat_answer(ctx, msg), "via": "local-fallback (Mistral error: %s)" % str(e)[:80]})
+                return self._send(200, {"ok": True, "reply": local_chat_answer(ctx, msg), "via": "local (connect Mistral in ☰ → Mistral for AI answers)"})
             if path == "/api/gates/delete":
                 gid = body.get("id")
                 g = db.execute("SELECT id FROM gates WHERE id=?", (gid,)).fetchone()
