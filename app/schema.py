@@ -453,6 +453,9 @@ def seed(db: sqlite3.Connection):
         ("PRJ-C5", "Authorization", "PH-ORGANIZE", "Explore", "2026-03-01", "2026-07-31", "planned", "green", "cell"),
         ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell"),
         ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell"),
+        ("PRJ-V1", "Version 1", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout"),
+        ("PRJ-V2", "Version 2", "PH-DEPLOY", "Realize", "2026-06-01", "2026-12-31", "planned", "amber", "rollout"),
+        ("PRJ-V3", "Version 3", "PH-APPRAISE", "Deploy", "2027-01-01", "2027-04-30", "planned", "green", "rollout"),
     ])
 
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")

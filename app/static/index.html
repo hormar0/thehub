@@ -208,27 +208,10 @@
 </head>
 <body>
 <header>
-  <div class="logo">The<span>Hub</span></div>
-  <nav id="nav">
-    <button data-view="dashboard" class="active">Dashboard</button>
-    <button data-view="gates">Gates</button>
-    <button data-view="readiness">Readiness</button>
-    <button data-view="work">Work</button>
-    <button data-view="planning">Planning</button>
-    <button data-view="roadmap">Roadmap</button>
-    <button data-view="more">More ▾</button>
-  </nav>
-  <button id="hamburger" title="Settings" style="margin-left:auto;background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1">☰</button>
-  <div id="menu" style="display:none;position:absolute;top:44px;right:14px;background:linear-gradient(165deg, rgba(52,62,92,.85), rgba(22,28,48,.9));border:1px solid var(--glass-border);border-radius:14px;padding:8px;min-width:210px;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);z-index:30">
-    <button class="menu-item" data-view="settings" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">⚙ Settings</button>
-    <button class="menu-item" id="menuModules" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">▦ App store</button>
-    <button class="menu-item" id="menuImport" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">⇪ Import from Excel</button>
-    <button class="menu-item" id="menuProgram" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">▤ Program &amp; projects</button>
-    <button class="menu-item" id="menuRepo" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">☁ Document repository</button>
-    <button class="menu-item" id="menuAgents" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">🤖 AI agents</button>
-    <button class="menu-item" id="menuMistral" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">✦ Mistral</button>
-    <button class="menu-item" id="menuUsers" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px">👤 Users</button>
-  </div>
+  <button id="hamburger" title="Menu" style="background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1">☰</button>
+  <div class="logo" style="margin-left:auto">The<span>Hub</span></div>
+  <nav id="nav"></nav>
+  <div id="menu" style="display:none;position:absolute;top:44px;left:10px;background:linear-gradient(165deg, rgba(52,62,92,.85), rgba(22,28,48,.9));border:1px solid var(--glass-border);border-radius:14px;padding:8px;min-width:240px;max-height:70vh;overflow-y:auto;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);z-index:30"></div>
 </header>
 <main id="app"></main>
 <div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
@@ -290,6 +273,28 @@ async function loadModules() {
     if (mod) b.style.display = moduleMap[mod] && moduleMap[mod].enabled ? '' : 'none';
   });
 }
+const ALL_VIEWS = [
+  { id: 'program', label: 'Program', icon: '▦' },
+  { id: 'projects', label: 'Projects', icon: '▤' },
+  { id: 'gates', label: 'Gates', icon: '◆' },
+  { id: 'risks', label: 'Risks', icon: '⚠' },
+  { id: 'time', label: 'Time', icon: '⏱' },
+  { id: 'readiness', label: 'Readiness', icon: '◎' },
+  { id: 'work', label: 'Work', icon: '✎' },
+  { id: 'planning', label: 'Planning', icon: '🗓' },
+  { id: 'more', label: 'More', icon: '⋯' },
+];
+const DEFAULT_TABS = ['program', 'projects', 'gates', 'risks', 'time'];
+function getTabs() {
+  try { return JSON.parse(localStorage.getItem('hub_tabs')) || DEFAULT_TABS; } catch { return DEFAULT_TABS; }
+}
+function buildNav() {
+  const nav = document.getElementById('nav');
+  nav.innerHTML = getTabs().map(id => {
+    const v = ALL_VIEWS.find(x => x.id === id);
+    return v ? `<button data-view="${v.id}" title="${v.label}">${v.icon} ${v.label}</button>` : '';
+  }).join('');
+}
 document.getElementById('nav').addEventListener('click', e => {
   const v = e.target.dataset.view;
   if (v) { currentView = v; render(); }
@@ -302,6 +307,26 @@ document.getElementById('hamburger').addEventListener('click', e => {
 document.addEventListener('click', e => {
   if (e.target.id !== 'hamburger' && !menu.contains(e.target)) menu.style.display = 'none';
 });
+function buildMenu() {
+  const sections = [
+    ['Program', [['settings', '⚙ Settings'], ['tabs', '🗂 My tabs']]],
+    ['Work', [['work', '✎ Work (Register / Kanban)'], ['more:ledger', '📒 Decisions & Conditions']]],
+    ['Planning', [['planning', '🗓 Planning (Gantt / Calendar / WBS)']]],
+    ['Insights', [['readiness', '◎ Readiness (MRF)'], ['more:briefing', '📄 Briefing Pack'], ['more:agents', '🤖 AI Agents'], ['more:allocation', '👥 Allocation grid'], ['more:invoicing', '🧾 Invoicing'], ['more:bookkeeping', '📚 Bookkeeping'], ['more:projaccounting', '💰 Proj. Accounting'], ['more:consolidation', '🏢 Consolidation'], ['more:timereport', '⏱ Time Report']]],
+  ];
+  menu.innerHTML = sections.map(([title, items]) => `
+    <div class="small muted" style="padding:6px 10px 2px;font-weight:700">${title}</div>
+    ${items.map(([v, l]) => `<button class="menu-item" data-goto="${v}" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px">${l}</button>`).join('')}
+  `).join('');
+  menu.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click', () => {
+    menu.style.display = 'none';
+    const g = b.dataset.goto;
+    if (g === 'tabs') { currentView = 'settings'; settingsTab = 'tabs'; render(); return; }
+    if (g.startsWith('more:')) { subView = g.slice(5); currentView = 'more'; render(); return; }
+    if (g === 'settings') { currentView = 'settings'; settingsTab = 'store'; render(); return; }
+    currentView = g; render();
+  }));
+}
 document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click', () => {
   menu.style.display = 'none';
   if (b.id === 'menuModules') settingsTab = 'store';
@@ -311,12 +336,16 @@ document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click',
   else if (b.id === 'menuAgents') settingsTab = 'agents';
   else if (b.id === 'menuUsers') settingsTab = 'users';
   else if (b.id === 'menuMistral') settingsTab = 'mistral';
+  else if (b.id === 'menuTabs') settingsTab = 'tabs';
   else settingsTab = 'store';
   currentView = 'settings'; render();
 }));
 async function render() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
-  if (currentView === 'dashboard') return renderDashboard();
+  if (currentView === 'program' || currentView === 'dashboard') return renderDashboard();
+  if (currentView === 'projects') return renderProjects();
+  if (currentView === 'risks') { subView = 'raid'; currentView = 'more'; return render(); }
+  if (currentView === 'time') { subView = 'timereport'; currentView = 'more'; return render(); }
   if (currentView === 'gates') return renderGates();
   if (currentView === 'readiness') return renderReadiness();
   if (currentView === 'settings') return renderSettings();
@@ -353,37 +382,53 @@ const BAND_CLS = { green: 'tl-green', amber: 'tl-amber', red: 'tl-red' };
 async function renderDashboard() {
   const d = await api('/dashboard');
   const g = d.next_gate, r = d.next_gate_readiness;
+  const raid = await api('/raid');
+  const openRisks = raid.filter(x => x.type === 'risk' && x.status !== 'closed').length;
+  const openHigh = raid.filter(x => x.severity === 'high' || x.severity === 'very_high').length;
+  const pl = d.program_light;
+  const projects = [...d.projects].sort((a, b) => (a.project_type || '').localeCompare(b.project_type || '') || a.name.localeCompare(b.name));
   app.innerHTML = `
-    <h2>Program Dashboard</h2>
-    <div class="sub">Assembled from the record · ${esc(d.today)}</div>
-    <div class="grid cards">
-      <div class="card" style="cursor:pointer;border-color:rgba(140,175,255,.5)" onclick="currentView='roadmap';render()" title="Program — click for roadmap">
-        <div style="display:flex;align-items:center;gap:12px">
-          <span class="tl ${d.program_light === 'green' ? 'tl-green' : d.program_light === 'amber' ? 'tl-amber' : 'tl-red'} tl-lg"></span>
-          <div><div style="font-weight:700">Program</div><div class="lbl">${lightPicker(d.program_light, 'setProgramLight')} · click card for roadmap</div></div>
+    <div class="panel" style="display:flex;gap:24px;align-items:stretch;margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:center;padding:6px 10px;border-right:1px solid var(--glass-border)">
+        <div style="display:flex;flex-direction:column;gap:5px;background:rgba(0,0,0,.35);border:1px solid var(--glass-border);border-radius:12px;padding:8px">
+          <span class="tl ${pl === 'red' ? 'tl-red' : ''}" style="${pl === 'red' ? '' : 'opacity:.25'}"></span>
+          <span class="tl ${pl === 'amber' ? 'tl-amber' : ''}" style="${pl === 'amber' ? '' : 'opacity:.25'}"></span>
+          <span class="tl ${pl === 'green' ? 'tl-green' : ''}" style="${pl === 'green' ? '' : 'opacity:.25'}"></span>
+        </div>
+        <span class="small muted">${pl.toUpperCase()}</span>
+        <span style="display:inline-flex;gap:4px">${lightPicker(pl, 'setProgramLight')}</span>
+      </div>
+      <div style="flex:1">
+        <h2 style="margin-bottom:2px">Program</h2>
+        <div class="sub" style="margin-bottom:12px">${esc(d.today)} · click to open roadmap</div>
+        <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="card"><div class="kpi">${r ? r.pct + '%' : '—'}</div><div class="lbl">Evidence readiness · next gate ${esc(g?.id)}</div></div>
+          <div class="card"><div class="kpi">${openRisks}</div><div class="lbl">Open risks (of ${raid.length} RAID items)</div></div>
+          <div class="card"><div class="kpi">${openHigh}</div><div class="lbl">High / very-high RAID</div></div>
+          <div class="card"><div class="kpi">${d.counts.open_conditions}</div><div class="lbl">Open gate conditions ${d.counts.overdue_conditions ? `(${d.counts.overdue_conditions} overdue)` : ''}</div></div>
+          <div class="card"><div class="kpi">${d.counts.open_decisions}</div><div class="lbl">Open / escalated decisions</div></div>
+          <div class="card"><div class="kpi">${d.counts.blocked_deliverables}</div><div class="lbl">Blocked deliverables</div></div>
         </div>
       </div>
-      ${d.projects.map(p => `
-      <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer" onclick="currentView='roadmap';render()">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <b>${esc(p.id)}</b><span class="small muted">${esc(p.project_type)}</span>
-        </div>
-        <div class="lbl" style="margin-top:2px">${esc(p.name)}</div>
-        <div class="lbl">${p.deliverable_count} deliverables · ${esc(p.status)} · ${esc(p.sap_phase)}</div>
-      </div>`).join('')}
-      <div class="card"><div class="kpi">${r ? r.pct + '%' : '—'}</div><div class="lbl">Evidence readiness · next gate ${esc(g?.id)}</div></div>
-      <div class="card"><div class="kpi">${d.counts.open_conditions}</div><div class="lbl">Open gate conditions ${d.counts.overdue_conditions ? `(${d.counts.overdue_conditions} overdue)` : ''}</div></div>
-      <div class="card"><div class="kpi">${d.counts.open_decisions}</div><div class="lbl">Open / escalated decisions</div></div>
-      <div class="card"><div class="kpi">${d.counts.blocked_deliverables}</div><div class="lbl">Blocked deliverables</div></div>
     </div>
-    <div class="grid two-col" style="margin-top:16px">
+    <div class="panel" style="margin-bottom:16px">
+      <h3>Projects <span class="small muted">(sorted by type)</span></h3>
+      ${projects.map(p => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
+          <div style="flex:1;cursor:pointer" onclick="currentView='projects';render()">
+            <b>${esc(p.name)}</b>
+            <div class="small muted">${esc(p.project_type)} · SAP ${esc(p.sap_phase)} · ${p.deliverable_count} deliverables · ${esc(p.status)}</div>
+          </div>
+          <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
+        </div>`).join('')}
+    </div>
+    <div class="grid two-col">
       <div class="panel">
         <h3>Next gate — ${esc(g?.name)} (${esc(g?.id)})</h3>
         <div class="muted small">Scheduled ${esc(g?.scheduled_date)} · Gate Chair: ${esc(g?.chair)} · ${gatePill(g?.status)}</div>
         <div class="bar" style="margin:12px 0"><div style="width:${r?.pct}%"></div></div>
         <div class="small muted">${r?.total} deliverables in the evidence contract · ${r?.verified} verified</div>
         ${d.mrf ? `<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span class="tl ${BAND_CLS[d.mrf.band]}"></span><span class="small">MRF readiness <b>${d.mrf.score}/100</b> · <b>${d.mrf.outcome}</b> — <a href="#" onclick="currentView='readiness';window._rgGate='${esc(d.mrf.gate_id)}';render();return false" style="color:#8ab8ff">open readiness</a></span></div>` : ''}
-        ${(r?.items || []).map(i => `<div class="att" style="font-size:13px">${esc(i.id)} ${esc(i.title)} — ${statePill(i.state)} ${evPill(i.evidence)}${i.grade ? ` · grade ${esc(i.grade)}` : ''}</div>`).join('')}
       </div>
       <div class="panel">
         <h3>Needs your attention — signal, not noise</h3>
@@ -392,7 +437,7 @@ async function renderDashboard() {
     </div>
     <div class="panel" style="margin-top:16px">
       <h3>💬 Ask The Hub</h3>
-      <div class="small muted" style="margin-bottom:10px">Ask about milestones, gates, deliverables, risks, decisions, projects — e.g. "what is the next milestone status?", "what are my deliverables?", "show my risks". Your name: <input id="chatUser" placeholder="e.g. A. Reinhart" style="width:150px" value="${esc(window._chatUser || '')}"> <span class="muted" id="chatVia"></span></div>
+      <div class="small muted" style="margin-bottom:10px">Ask about milestones, gates, deliverables, risks, decisions, projects. Your name: <input id="chatUser" placeholder="e.g. A. Reinhart" style="width:150px" value="${esc(window._chatUser || '')}"> <span class="muted" id="chatVia"></span></div>
       <div id="chatLog" style="max-height:260px;overflow-y:auto;margin-bottom:10px"></div>
       <div style="display:flex;gap:8px">
         <input id="chatMsg" style="flex:1" placeholder="Ask about milestone status, my deliverables, risks…" onkeydown="if(event.key==='Enter')sendChat()">
@@ -402,29 +447,23 @@ async function renderDashboard() {
   const log = document.getElementById('chatLog');
   (window._chat || []).forEach(m => log.appendChild(chatBubble(m)));
 }
-function chatBubble(m) {
-  const div = document.createElement('div');
-  div.style.cssText = 'margin-bottom:8px;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.5;white-space:pre-wrap;' +
-    (m.role === 'user' ? 'background:rgba(140,175,255,.18);border:1px solid rgba(140,175,255,.35);text-align:right' : 'background:rgba(255,255,255,.06);border:1px solid var(--glass-border)');
-  div.textContent = (m.role === 'user' ? 'You: ' : 'The Hub: ') + m.text + (m.via ? `  (${m.via})` : '');
-  return div;
-}
-async function sendChat() {
-  const input = document.getElementById('chatMsg');
-  const msg = input.value.trim();
-  if (!msg) return;
-  input.value = '';
-  window._chatUser = document.getElementById('chatUser').value;
-  window._chat = window._chat || [];
-  window._chat.push({ role: 'user', text: msg });
-  const log = document.getElementById('chatLog');
-  log.appendChild(chatBubble({ role: 'user', text: msg }));
-  log.scrollTop = log.scrollHeight;
-  const res = await api('/chat', 'POST', { message: msg, user: window._chatUser || '' });
-  const entry = { role: 'hub', text: res.reply || res.error || 'no answer', via: res.via || '' };
-  window._chat.push(entry);
-  log.appendChild(chatBubble(entry));
-  log.scrollTop = log.scrollHeight;
+
+async function renderProjects() {
+  const r = await api('/roadmap');
+  const projects = [...r.projects].sort((a, b) => (a.project_type || '').localeCompare(b.project_type || '') || a.name.localeCompare(b.name));
+  app.innerHTML = `
+    <h2>Projects</h2>
+    <div class="sub">Sorted by type · RAG circle per project · click a row for the roadmap</div>
+    <div class="panel">
+      ${projects.map(p => `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer" onclick="currentView='roadmap';render()">
+          <div style="flex:1">
+            <b>${esc(p.name)}</b>
+            <div class="small muted">${esc(p.project_type)} · SAP ${esc(p.sap_phase)} · ${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
+          </div>
+          <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
+        </div>`).join('')}
+    </div>`;
 }
 async function renderGates() {
   const gates = await api('/gates');
@@ -998,6 +1037,12 @@ async function renderTimeReport() {
       </table>
     </div>`;
 }
+function toggleTab(id, on) {
+  let t = getTabs();
+  t = on ? [...new Set([...t, id])] : t.filter(x => x !== id);
+  localStorage.setItem('hub_tabs', JSON.stringify(t));
+  buildNav(); render();
+}
 async function setReportMode(mode) { await api('/reportmode', 'POST', { report_on: mode }); render(); }
 function autoProj() {
   const d = window._dels ? window._dels.find(x => x.id === document.getElementById('trDel').value) : null;
@@ -1185,7 +1230,7 @@ async function syncErrors() {
   render();
 }
 const SETTINGS_TABS = [
-  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['users', 'Users'], ['mistral', 'Mistral'],
+  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['users', 'Users'], ['mistral', 'Mistral'], ['tabs', 'My tabs'],
 ];
 async function renderSettings() {
   const mods = await api('/modules');
@@ -1291,6 +1336,12 @@ async function renderSettings() {
     ${settingsTab === 'agents' ? agentsPanel : ''}
     ${settingsTab === 'users' ? usersPanel : ''}
     ${settingsTab === 'mistral' ? mistralPanel : ''}
+    ${settingsTab === 'tabs' ? `
+      <div class="panel" style="max-width:480px">
+        <h3>My tabs</h3>
+        <div class="small muted" style="margin-bottom:10px">Choose which views appear as main tabs (saved in this browser).</div>
+        ${ALL_VIEWS.map(v => `<label style="display:block;padding:5px 0"><input type="checkbox" ${getTabs().includes(v.id) ? 'checked' : ''} onchange="toggleTab('${v.id}', this.checked)"> ${v.icon} ${v.label}</label>`).join('')}
+      </div>` : ''}
   `;
 }
 async function addPhase() {
@@ -1567,7 +1618,7 @@ async function saveReportCover(gateId) {
 }
 function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
 document.getElementById('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
-loadModules().then(render);
+buildNav(); buildMenu(); loadModules().then(render);
 </script>
 </body>
 </html>
