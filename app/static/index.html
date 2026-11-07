@@ -435,11 +435,11 @@ async function renderDashboard() {
           <option value="issues" ${(window._psort||'')==='issues'?'selected':''}>Sort: most issues</option>
         </select>
       </h3>
-      <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:start">
+      <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:start;gap:14px">
       ${projects.map(p => `
         <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer;display:flex;align-items:center;gap:10px;min-height:64px" onclick="openProject('${p.id}')">
           <span class="tl tl-${esc(p.light)} tl-lg" style="flex:0 0 auto" title="${esc(p.light)}"></span>
-          <div style="line-height:1.25"><div style="font-weight:700;font-size:14.5px">${esc(p.name)}</div><div class="small muted">${esc(p.project_type)}</div></div>
+          <div style="line-height:1.2"><div style="font-weight:700;font-size:13px;line-height:20px">${esc(p.name)}</div><div class="small muted">${esc(p.project_type)}</div></div>
         </div>`).join('')}
       </div>
     </div>
@@ -480,7 +480,7 @@ async function renderProjects() {
       ${projects.map(p => `
         <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer;display:flex;align-items:center;gap:10px;min-height:64px" onclick="openProject('${p.id}')">
           <span class="tl tl-${esc(p.light)} tl-lg" style="flex:0 0 auto" title="${esc(p.light)}"></span>
-          <div style="line-height:1.25"><div style="font-weight:700;font-size:14.5px">${esc(p.name)}</div><div class="small muted">${esc(p.project_type)}</div></div>
+          <div style="line-height:1.2"><div style="font-weight:700;font-size:13px;line-height:20px">${esc(p.name)}</div><div class="small muted">${esc(p.project_type)}</div></div>
         </div>`).join('')}
       </div>
     </div>`;
@@ -1065,7 +1065,7 @@ async function renderRoadmap() {
           </div>
           <div style="position:relative;min-height:44px;background:rgba(255,255,255,.04);border-radius:8px">
             ${(sapph.filter(sp => sp.project_id === p.id).sort((a, b) => a.start_date.localeCompare(b.start_date))).map(sp => `
-              <div class="gbar sapbar" data-pid="${esc(p.id)}" data-phase="${esc(sp.phase)}" data-start="${esc(sp.start_date)}" data-end="${esc(sp.end_date)}" title="${esc(sp.phase)} — drag to move, right edge to resize" style="position:absolute;left:${pct(sp.start_date)}%;width:${Math.max(2, pct(sp.end_date) - pct(sp.start_date))}%;top:${14 + (['Discover','Prepare','Explore','Realize','Deploy','Run'].indexOf(sp.phase) % 3) * 0}px;height:14px;border-radius:5px;background:${(() => { const order = ['Discover','Prepare','Explore','Realize','Deploy','Run']; const cur = order.indexOf(p.sap_phase); const i = order.indexOf(sp.phase); if (sp.phase === p.sap_phase) return 'linear-gradient(90deg,#5b8def,#7f6fd0)'; return i < cur ? '#1e3a6e' : 'rgba(140,180,255,.35)'; })()};cursor:grab;border:1px solid rgba(255,255,255,.2)">
+              <div class="gbar sapbar" data-pid="${esc(p.id)}" data-phase="${esc(sp.phase)}" data-start="${esc(sp.start_date)}" data-end="${esc(sp.end_date)}" title="${esc(sp.phase)} — drag to move, right edge to resize" style="position:absolute;left:${pct(sp.start_date)}%;width:${Math.max(2, pct(sp.end_date) - pct(sp.start_date))}%;top:${14 + (['Discover','Prepare','Explore','Realize','Deploy','Run'].indexOf(sp.phase) % 3) * 0}px;height:18px;border-radius:5px;background:${(() => { const order = ['Discover','Prepare','Explore','Realize','Deploy','Run']; const cur = order.indexOf(p.sap_phase); const i = order.indexOf(sp.phase); if (sp.phase === p.sap_phase) return 'linear-gradient(90deg,#5b8def,#7f6fd0)'; return i < cur ? '#1e3a6e' : 'rgba(140,180,255,.35)'; })()};cursor:grab;border:1px solid rgba(255,255,255,.2)">
                 <span class="small" style="position:absolute;left:4px;top:0;font-size:9.5px;color:#dfe9ff">${esc(sp.phase)}</span>
                 <div class="gresize" style="position:absolute;right:-4px;top:0;width:8px;height:100%;cursor:ew-resize;background:rgba(255,255,255,.35)"></div>
               </div>`).join('')}
