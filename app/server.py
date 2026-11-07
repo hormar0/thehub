@@ -37,6 +37,10 @@ def get_db():
 def init_db():
     db = get_db()
     db.executescript(SCHEMA)
+    tcols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
+    if "note" not in tcols:
+        db.execute("ALTER TABLE time_entries ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+    db.execute("CREATE TABLE IF NOT EXISTS week_status (owner TEXT NOT NULL, week TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft', PRIMARY KEY (owner, week))")
     # per-day time entries: add day column on existing DBs before seeding
     tcols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
     if tcols and "day" not in tcols:
@@ -59,8 +63,8 @@ def init_db():
     # allow project-only time entries (deliverable_id nullable) on existing DBs
     cols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
     if cols and "deliverable_id" in cols:
-        db.execute("CREATE TABLE IF NOT EXISTS time_entries_new (id TEXT PRIMARY KEY, deliverable_id TEXT REFERENCES deliverables(id), owner TEXT NOT NULL, hours REAL NOT NULL, week TEXT NOT NULL, project_id TEXT NOT NULL DEFAULT '', day TEXT NOT NULL DEFAULT '')")
-        db.execute("INSERT OR IGNORE INTO time_entries_new SELECT id, deliverable_id, owner, hours, week, project_id, day FROM time_entries")
+        db.execute("CREATE TABLE IF NOT EXISTS time_entries_new (id TEXT PRIMARY KEY, deliverable_id TEXT REFERENCES deliverables(id), owner TEXT NOT NULL, hours REAL NOT NULL, week TEXT NOT NULL, project_id TEXT NOT NULL DEFAULT '', day TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '')")
+        db.execute("INSERT OR IGNORE INTO time_entries_new SELECT id, deliverable_id, owner, hours, week, project_id, day, note FROM time_entries")
         db.execute("DROP TABLE time_entries")
         db.execute("ALTER TABLE time_entries_new RENAME TO time_entries")
     # migrate projects to the rollout/cell set on every start
@@ -569,7 +573,7 @@ class Handler(BaseHTTPRequestHandler):
             data = json.dumps(body).encode()
         self.send_response(code)
         self.send_header("Content-Type", content_type)
-        if safe.endswith("index.html"):
+        if content_type == "text/html":
             self.send_header("Cache-Control", "no-store, must-revalidate")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
@@ -641,7 +645,8 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/modules":
                 return self._send(200, rows(db.execute("SELECT * FROM app_modules ORDER BY label")))
             if path == "/api/timereport":
-                entries = rows(db.execute("SELECT t.*, d.title AS deliverable_title, d.gate_id FROM time_entries t LEFT JOIN deliverables d ON d.id = t.deliverable_id ORDER BY t.week, t.owner"))
+                entries = rows(db.execute("SELECT t.*, d.title AS deliverable_title, d.gate_id FROM time_entries t LEFT JOIN deliverables d ON d.id = t.deliverable_id ORDER BY t.week, t.day, t.owner"))
+                wstat = rows(db.execute("SELECT * FROM week_status"))
                 by_owner = {}
                 for e in entries:
                     by_owner.setdefault(e["owner"], {"hours": 0, "items": 0})
@@ -654,7 +659,7 @@ class Handler(BaseHTTPRequestHandler):
                     by_project[pid]["hours"] += e["hours"]
                     by_project[pid]["items"] += 1
                 ps = db.execute("SELECT report_on FROM program_settings WHERE id=1").fetchone()
-                return self._send(200, {"entries": entries, "by_owner": by_owner, "by_project": by_project, "report_on": ps["report_on"] if ps else "deliverables"})
+                return self._send(200, {"entries": entries, "by_owner": by_owner, "by_project": by_project, "report_on": ps["report_on"] if ps else "deliverables", "week_status": wstat})
             if path == "/api/calendar":
                 dels = rows(db.execute("SELECT id, title, due_date, state, priority, gate_id, dtype, project_id FROM deliverables WHERE due_date != ''"))
                 gates = rows(db.execute("SELECT id, name, scheduled_date, status FROM gates"))
@@ -812,6 +817,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True})
             if path == "/api/org/remove":
                 db.execute("DELETE FROM project_org WHERE project_id=? AND username=?", (body.get("project_id"), body.get("username")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/timereport/delete":
+                db.execute("DELETE FROM time_entries WHERE id=?", (body.get("id"),))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/timereport/weekstatus":
+                db.execute("INSERT INTO week_status (owner, week, status) VALUES (?,?,?) ON CONFLICT(owner, week) DO UPDATE SET status=excluded.status",
+                           (body.get("owner"), body.get("week"), body.get("status", "draft")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/wbs/add":
@@ -1029,7 +1043,7 @@ class Handler(BaseHTTPRequestHandler):
                     d0 = datetime.strptime(day, "%Y-%m-%d")
                     d0 = d0 - timedelta(days=(d0.weekday()))
                     week = d0.strftime("%Y-%m-%d")
-                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?,?,?)", (tid, body.get("deliverable_id") or None, body.get("owner"), float(body.get("hours", 0)), week, body.get("project_id", ""), day))
+                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?,?,?,?)", (tid, body.get("deliverable_id") or None, body.get("owner"), float(body.get("hours", 0)), week, body.get("project_id", ""), day))
                 db.commit()
                 return self._send(200, {"ok": True, "id": tid})
             if path == "/api/program/phases/add":

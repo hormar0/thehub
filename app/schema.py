@@ -99,7 +99,8 @@ CREATE TABLE IF NOT EXISTS time_entries (
     hours REAL NOT NULL,
     week TEXT NOT NULL,
     project_id TEXT NOT NULL DEFAULT '',
-    day TEXT NOT NULL DEFAULT ''
+    day TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS program_phases (
@@ -163,6 +164,13 @@ CREATE TABLE IF NOT EXISTS mistral_config (
     model TEXT NOT NULL DEFAULT 'mistral-large-latest',
     base_url TEXT NOT NULL DEFAULT 'https://api.mistral.ai/v1',
     enabled INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS week_status (
+    owner TEXT NOT NULL,
+    week TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft',   -- draft | submitted | approved
+    PRIMARY KEY (owner, week)
 );
 
 CREATE TABLE IF NOT EXISTS project_org (
@@ -439,7 +447,7 @@ def seed(db: sqlite3.Connection):
         ("TE-05", "DEL-005", "S. Lindqvist", 12.5, "2026-W13"),
         ("TE-06", "DEL-006", "L. Moreau", 8.0, "2026-W12"),
     ]
-    cur.executemany("INSERT INTO time_entries VALUES (?,?,?,?,?,?,?)", [(t[0], t[1], t[2], t[3], t[4], "PRJ-01", "") for t in time_entries])
+    cur.executemany("INSERT INTO time_entries VALUES (?,?,?,?,?,?,?,?)", [(t[0], t[1], t[2], t[3], t[4], "PRJ-R1", "", "") for t in time_entries])
 
 
     cur.executemany("INSERT OR REPLACE INTO program_phases VALUES (?,?,?,?,?)", [

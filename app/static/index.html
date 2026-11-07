@@ -1136,67 +1136,106 @@ async function logDay(day, projectId) {
 async function renderTimeReport() {
   const t = await api('/timereport');
   const progs = await api('/program');
+  const owner = window._tsOwner || window._chatUser || 'A. Reinhart';
+  const view = window._tsView || 'week';
+  const now = new Date();
+  const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + (window._tsWeekOff || 0) * 7);
+  const days = []; for (let d = 0; d < 7; d++) { const x = new Date(monday); x.setDate(monday.getDate() + d); days.push(x); }
+  const dayISO = x => x.toISOString().slice(0, 10);
+  const weekStart = dayISO(days[0]);
+  const fmt = mins => { mins = Math.round(mins * 60); return Math.floor(mins / 60) + ':' + String(mins % 60).padStart(2, '0'); };
+  const myEntries = t.entries.filter(e => e.owner === owner && (e.week === weekStart || (e.day && dayISO(days[0]) <= e.day && e.day <= dayISO(days[6]))));
+  const rows = {};
+  if (window._tsNewRow) rows[window._tsNewRow] = {};
+  myEntries.forEach(e => { const k = e.project_id || '(none)'; rows[k] = rows[k] || {}; });
   const projects = progs.projects;
-  const week = trWeek();
-  const days = [];
-  for (let i = 0; i < 7; i++) { const d = trDate(week); d.setDate(d.getDate() + i); days.push(d.toISOString().slice(0, 10)); }
-  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const today = new Date().toISOString().slice(0, 10);
-  const cell = {};
-  t.entries.forEach(e => { if (e.day) { const k = e.day + '|' + (e.project_id || ''); cell[k] = (cell[k] || 0) + e.hours; } });
-  const added = JSON.parse(localStorage.getItem('hub_time_week_' + week) || '[]');
-  const rowIds = [...new Set([...added, ...t.entries.filter(e => e.day && days.includes(e.day)).map(e => e.project_id)])];
-  const rowProjects = rowIds.map(id => projects.find(p => p.id === id)).filter(Boolean);
-  const addable = projects.filter(p => !rowIds.includes(p.id));
+  const cellMin = {};
+  myEntries.forEach(e => { if (e.day) cellMin[e.project_id + '|' + e.day] = (cellMin[e.project_id + '|' + e.day] || 0) + e.hours * 60; });
+  const rowTot = {}, dayTot = {}, grand = 0;
+  myEntries.forEach(e => { if (e.day) { rowTot[e.project_id] = (rowTot[e.project_id] || 0) + e.hours * 60; dayTot[e.day] = (dayTot[e.day] || 0) + e.hours * 60; grand += e.hours * 60; } });
+  const wstatus = (t.week_status || []).find(w => w.owner === owner && w.week === weekStart);
+  const status = wstatus ? wstatus.status : 'draft';
+  const pending = (t.week_status || []).filter(w => w.status === 'submitted').length;
   app.innerHTML = `
-    <h2>Time Reporting — calendar week</h2>
-    <div class="sub" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <button class="btn ghost" onclick="trShift(-7)">&#8249; Prev week</button>
-      <button class="btn ghost" onclick="trShift(7)">Next week &#8250;</button>
-      <button class="btn ghost" onclick="window._trWeek=trMonday(new Date());render()">This week</button>
-      <span><b>${week}</b> &rarr; <b>${days[6]}</b> &middot; click a day cell to log hours</span>
+    <h2>Time</h2>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+      ${['Timesheet', 'Pending approval', 'Unsubmitted', 'Approved'].map((s, i) => `<button class="btn ${i === 0 ? '' : 'ghost'}">${s}${s === 'Pending approval' ? ` (${pending})` : ''}</button>`).join('')}
+      <span style="flex:1"></span>
+      <button class="btn ghost" onclick="window._tsWeekOff=(${(window._tsWeekOff || 0)} - 1);render()">←</button>
+      <span class="small">This week: ${days[0].toLocaleDateString('en-GB', { day: '2-digit' })} – ${days[6].toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+      <button class="btn ghost" onclick="window._tsWeekOff=(${(window._tsWeekOff || 0)} + 1);render()">→</button>
+      <select onchange="window._tsView=this.value;render()">
+        <option value="day" ${view === 'day' ? 'selected' : ''}>Day</option>
+        <option value="week" ${view === 'week' ? 'selected' : ''}>Week</option>
+        <option value="calendar" ${view === 'calendar' ? 'selected' : ''}>Calendar</option>
+      </select>
+      <span class="small muted">as</span><input id="tsOwner" value="${esc(owner)}" style="width:140px" onchange="window._tsOwner=this.value;render()">
     </div>
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;margin-top:14px;align-items:start">
-      <div class="panel" style="overflow-x:auto">
-        <table style="min-width:720px">
-          <tr><th>Project</th>${days.map((d, i) => `<th style="${d === today ? 'color:#8ab8ff' : ''}">${dayNames[i]}<div class="small muted">${d.slice(5)}</div></th>`).join('')}<th>Total</th></tr>
-          ${rowProjects.length ? rowProjects.map(p => `
-          <tr>
-            <td class="small" style="white-space:nowrap"><b>${esc(p.name)}</b><div class="muted" style="font-size:10.5px">${esc(p.project_type)}</div></td>
-            ${days.map(d => { const v = cell[d + '|' + p.id] || 0; return `<td style="text-align:center;cursor:pointer" title="log hours for ${esc(p.name)} on ${d}" onclick="logDay('${d}','${p.id}')">${v ? v.toFixed(1) + ' h' : '&middot;'}</td>`; }).join('')}
-            <td class="small" style="text-align:right;font-weight:700">${days.reduce((s, d) => s + (cell[d + '|' + p.id] || 0), 0).toFixed(1)} h</td>
-          </tr>`).join('') : '<tr><td colspan="9" class="muted">No projects in this week yet — add one on the right.</td></tr>'}
-          <tr><td class="small muted"><b>Day total</b></td>
-            ${days.map(d => `<td class="small" style="text-align:center;font-weight:700">${t.entries.filter(e => e.day === d).reduce((s, e) => s + e.hours, 0).toFixed(1)} h</td>`).join('')}
-            <td class="small" style="text-align:right;font-weight:700">${t.entries.filter(e => days.includes(e.day)).reduce((s, e) => s + e.hours, 0).toFixed(1)} h</td>
-          </tr>
-        </table>
-      </div>
-      <div class="panel">
-        <h3>Add project to this week</h3>
-        ${addable.length ? addable.map(p => `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span class="small">${esc(p.name)}</span><button class="btn ghost" onclick="trAddProject('${p.id}')">+ add</button></div>`).join('') : '<div class="muted small">All projects are already in this week.</div>'}
-      </div>
-    </div>
-    <div class="grid two-col" style="margin-top:16px">
-      <div class="panel">
-        <h3>Hours by project</h3>
-        <table><tr><th>Project</th><th>Hours</th><th>Entries</th></tr>
-        ${Object.entries(t.by_project || {}).map(([p, v]) => `<tr><td>${esc(p)}</td><td>${v.hours.toFixed(1)}</td><td>${v.items}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Nothing logged yet.</td></tr>'}
-        </table>
-      </div>
-      <div class="panel">
-        <h3>Hours by owner</h3>
-        <table><tr><th>Owner</th><th>Hours</th><th>Entries</th></tr>
-        ${Object.entries(t.by_owner).map(([o, v]) => `<tr><td>${esc(o)}</td><td>${v.hours.toFixed(1)}</td><td>${v.items}</td></tr>`).join('')}
-        </table>
-      </div>
-    </div>
-    <div class="panel" style="margin-top:16px">
-      <h3>Entries</h3>
-      <table><tr><th>ID</th><th>Project</th><th>Deliverable</th><th>Owner</th><th>Hours</th><th>Day</th></tr>
-      ${t.entries.map(e => `<tr><td class="small">${esc(e.id)}</td><td class="small">${esc(e.project_id || '—')}</td><td class="small">${esc(e.deliverable_id)} ${esc(e.deliverable_title || '')}</td><td>${esc(e.owner)}</td><td>${e.hours}</td><td class="small">${esc(e.day || e.week)}</td></tr>`).join('')}
+    <div class="panel" style="overflow-x:auto">
+      <table style="min-width:900px">
+        <tr>
+          <th>Project / Task</th><th></th>
+          ${days.map(d => `<th style="${dayISO(d) === dayISO(now) ? 'color:#8ab8ff' : ''}">${d.toLocaleDateString('en-GB', { weekday: 'short' })} ${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</th>`).join('')}
+          <th>Total</th><th></th>
+        </tr>
+        ${Object.keys(rows).map(pid => {
+          const p = projects.find(x => x.id === pid);
+          return `<tr>
+            <td><b>${esc(p ? p.name : pid)}</b><div class="small muted">${esc(p ? p.project_type : '')}</div></td>
+            <td><button class="kb-del" title="Notes">🗒</button></td>
+            ${days.map(d => `<td style="text-align:center;cursor:pointer" onclick="tsCell('${pid}','${dayISO(d)}')">${cellMin[pid + '|' + dayISO(d)] ? fmt(cellMin[pid + '|' + dayISO(d)]) : ''}</td>`).join('')}
+            <td style="text-align:right"><b>${fmt(rowTot[pid] || 0)}</b></td>
+            <td><button class="kb-del" title="Delete row" onclick="tsDelRow('${pid}')">✕</button></td>
+          </tr>`;}).join('') || '<tr><td colspan="10" class="muted">No rows yet — use + Add row.</td></tr>'}
+        <tr style="border-top:2px solid var(--glass-border)">
+          <td><b>Total</b></td><td></td>
+          ${days.map(d => `<td style="text-align:center"><b>${fmt(dayTot[dayISO(d)] || 0)}</b></td>`).join('')}
+          <td style="text-align:right"><b>${fmt(grand)}</b></td><td></td>
+        </tr>
       </table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+      <button class="btn ghost" onclick="tsAddRow()">+ Add row</button>
+      <button class="btn ghost" onclick="tsSave('draft')">Save</button>
+      <button class="btn" onclick="tsSave('submitted')">Submit week for approval</button>
+      <span class="small muted">Status: <b>${esc(status)}</b></span>
     </div>`;
+}
+function tsMonday() {
+  const now = new Date();
+  const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + (window._tsWeekOff || 0) * 7);
+  return monday.toISOString().slice(0, 10);
+}
+async function tsCell(pid, day) {
+  const cur = prompt('Hours for ' + pid + ' on ' + day + ' (h:mm or decimal):', '');
+  if (!cur) return;
+  const m = cur.match(/^(\d+):(\d{1,2})$/);
+  const hours = m ? parseInt(m[1]) + parseInt(m[2]) / 60 : parseFloat(cur);
+  if (isNaN(hours)) return;
+  const note = prompt('Note (optional):', '') || '';
+  const res = await api('/timereport/add', 'POST', { deliverable_id: '', owner: window._tsOwner || window._chatUser || 'A. Reinhart', hours, week: tsMonday(), project_id: pid, day, note });
+  if (res.ok) { toast('Logged ' + hours + ' h'); render(); } else toast(res.error || 'Error', 'err');
+}
+async function tsDelRow(pid) {
+  if (!confirm('Delete all entries for ' + pid + ' this week?')) return;
+  const t = await api('/timereport');
+  for (const e of t.entries.filter(e => e.project_id === pid && e.week === tsMonday())) {
+    await api('/timereport/delete', 'POST', { id: e.id });
+  }
+  toast('Row deleted'); render();
+}
+async function tsAddRow() {
+  const progs = await api('/program');
+  const pid = prompt('Add row — project id (e.g. ' + (progs.projects[0] || {}).id + '):');
+  if (!pid) return;
+  window._tsNewRow = pid;
+  toast('Row added — click a day cell to log time');
+  render();
+}
+async function tsSave(status) {
+  await api('/timereport/weekstatus', 'POST', { owner: window._tsOwner || window._chatUser || 'A. Reinhart', week: tsMonday(), status });
+  toast(status === 'submitted' ? 'Week submitted for approval' : 'Draft saved');
+  render();
 }
 async function renderAgents() {
   const agents = await api('/agents');
