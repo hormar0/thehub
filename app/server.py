@@ -48,6 +48,13 @@ def init_db():
         ("PH-DISSOLVE", "Dissolution", "2027-04-01", "2027-06-30", 4),
     ])
     db.execute("DELETE FROM program_phases WHERE id NOT IN ('PH-FORMULATE','PH-ORGANIZE','PH-DEPLOY','PH-APPRAISE','PH-DISSOLVE')")
+    # allow project-only time entries (deliverable_id nullable) on existing DBs
+    cols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
+    if cols and "deliverable_id" in cols:
+        db.execute("CREATE TABLE IF NOT EXISTS time_entries_new (id TEXT PRIMARY KEY, deliverable_id TEXT REFERENCES deliverables(id), owner TEXT NOT NULL, hours REAL NOT NULL, week TEXT NOT NULL, project_id TEXT NOT NULL DEFAULT '')")
+        db.execute("INSERT OR IGNORE INTO time_entries_new SELECT id, deliverable_id, owner, hours, week, project_id FROM time_entries")
+        db.execute("DROP TABLE time_entries")
+        db.execute("ALTER TABLE time_entries_new RENAME TO time_entries")
     # migrate projects to the rollout/cell set on every start
     db.executemany("INSERT OR REPLACE INTO projects VALUES (?,?,?,?,?,?,?,?,?)", [
         ("PRJ-R1", "Factory China", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout"),
@@ -995,7 +1002,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "name": name, "enabled": enabled})
             if path == "/api/timereport/add":
                 tid = f"TE-{db.execute('SELECT COUNT(*) c FROM time_entries').fetchone()['c'] + 1:02d}"
-                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?,?)", (tid, body.get("deliverable_id"), body.get("owner"), float(body.get("hours", 0)), body.get("week"), body.get("project_id", "")))
+                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?,?)", (tid, body.get("deliverable_id") or None, body.get("owner"), float(body.get("hours", 0)), body.get("week"), body.get("project_id", "")))
                 db.commit()
                 return self._send(200, {"ok": True, "id": tid})
             if path == "/api/program/phases/add":

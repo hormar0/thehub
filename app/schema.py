@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS app_modules (
 
 CREATE TABLE IF NOT EXISTS time_entries (
     id TEXT PRIMARY KEY,
-    deliverable_id TEXT NOT NULL REFERENCES deliverables(id),
+    deliverable_id TEXT REFERENCES deliverables(id),
     owner TEXT NOT NULL,
     hours REAL NOT NULL,
     week TEXT NOT NULL,

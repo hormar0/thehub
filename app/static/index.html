@@ -209,7 +209,7 @@
 <body>
 <header>
   <button id="hamburger" title="Menu" style="background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1">☰</button>
-  <div class="logo" style="margin-left:auto">The<span>Hub</span></div>
+  <div class="logo" style="margin-left:auto;cursor:pointer" onclick="currentView='program';render()" title="Home">The<span>Hub</span></div>
   <nav id="nav"></nav>
   <div id="menu" style="display:none;position:absolute;top:44px;left:10px;background:linear-gradient(165deg, rgba(52,62,92,.85), rgba(22,28,48,.9));border:1px solid var(--glass-border);border-radius:14px;padding:8px;min-width:240px;max-height:70vh;overflow-y:auto;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);z-index:30"></div>
 </header>
@@ -309,10 +309,10 @@ document.addEventListener('click', e => {
 });
 function buildMenu() {
   const sections = [
-    ['Program', [['settings', '⚙ Settings'], ['tabs', '🗂 My tabs']]],
-    ['Work', [['work', '✎ Work (Register / Kanban)'], ['more:ledger', '📒 Decisions & Conditions']]],
-    ['Planning', [['planning', '🗓 Planning (Gantt / Calendar / WBS)']]],
-    ['Insights', [['readiness', '◎ Readiness (MRF)'], ['more:briefing', '📄 Briefing Pack'], ['more:agents', '🤖 AI Agents'], ['more:allocation', '👥 Allocation grid'], ['more:invoicing', '🧾 Invoicing'], ['more:bookkeeping', '📚 Bookkeeping'], ['more:projaccounting', '💰 Proj. Accounting'], ['more:consolidation', '🏢 Consolidation'], ['more:timereport', '⏱ Time Report']]],
+    ['Program', [['settings', 'Settings'], ['tabs', 'My tabs']]],
+    ['Work', [['work', 'Work (Register / Kanban)'], ['more:ledger', 'Decisions & Conditions']]],
+    ['Planning', [['planning', 'Planning (Gantt / Calendar / WBS)']]],
+    ['Insights', [['readiness', 'Readiness (MRF)'], ['more:briefing', 'Briefing Pack'], ['more:agents', 'AI Agents'], ['more:allocation', 'Allocation grid'], ['more:invoicing', 'Invoicing'], ['more:bookkeeping', 'Bookkeeping'], ['more:projaccounting', 'Proj. Accounting'], ['more:consolidation', 'Consolidation'], ['more:timereport', 'Time Report']]],
   ];
   menu.innerHTML = sections.map(([title, items]) => `
     <div class="small muted" style="padding:6px 10px 2px;font-weight:700">${title}</div>
@@ -345,7 +345,7 @@ async function render() {
   if (currentView === 'program' || currentView === 'dashboard') return renderDashboard();
   if (currentView === 'projects') return renderProjects();
   if (currentView === 'risks') { subView = 'raid'; currentView = 'more'; return render(); }
-  if (currentView === 'time') { subView = 'timereport'; currentView = 'more'; return render(); }
+  if (currentView === 'time') { app = document.getElementById('app'); return renderTimeReport(); }
   if (currentView === 'gates') return renderGates();
   if (currentView === 'readiness') return renderReadiness();
   if (currentView === 'settings') return renderSettings();
@@ -396,7 +396,6 @@ async function renderDashboard() {
           <span class="tl ${pl === 'green' ? 'tl-green' : ''}" style="${pl === 'green' ? '' : 'opacity:.25'}"></span>
         </div>
         <span class="small muted">${pl.toUpperCase()}</span>
-        <span style="display:inline-flex;gap:4px">${lightPicker(pl, 'setProgramLight')}</span>
       </div>
       <div style="flex:1">
         <h2 style="margin-bottom:2px">Program</h2>
@@ -455,14 +454,17 @@ async function renderProjects() {
     <h2>Projects</h2>
     <div class="sub">Sorted by type · RAG circle per project · click a row for the roadmap</div>
     <div class="panel">
+      <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
       ${projects.map(p => `
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer" onclick="currentView='roadmap';render()">
-          <div style="flex:1">
+        <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer" onclick="currentView='roadmap';render()">
+          <div style="display:flex;align-items:center;justify-content:space-between">
             <b>${esc(p.name)}</b>
-            <div class="small muted">${esc(p.project_type)} · SAP ${esc(p.sap_phase)} · ${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
+            <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
           </div>
-          <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
+          <div class="small muted" style="margin-top:4px">${esc(p.project_type)} · SAP ${esc(p.sap_phase)}</div>
+          <div class="small muted">${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
         </div>`).join('')}
+      </div>
     </div>`;
 }
 async function renderGates() {
@@ -901,7 +903,7 @@ async function renderRoadmap() {
             <div class="gbar" data-pid="${esc(p.id)}" data-start="${esc(p.start_date)}" data-end="${esc(p.end_date)}" title="${esc(p.id)} — drag to move, drag right edge to extend" style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(3, pct(p.end_date) - pct(p.start_date))}%;top:14px;height:16px;border-radius:6px;opacity:.95;cursor:grab;display:flex;overflow:hidden;border:1px solid rgba(255,255,255,.25)">
               ${['Discover','Prepare','Explore','Realize','Deploy','Run'].map((sp, si, arr) => {
                 const active = sp === p.sap_phase;
-                return `<div title="SAP Activate: ${sp}${active ? ' (current)' : ''}" style="flex:1;background:${active ? 'linear-gradient(90deg,#8ab8ff,#cfa9ff)' : 'rgba(255,255,255,.08)'};border-right:${si < arr.length - 1 ? '1px solid rgba(255,255,255,.15)' : 'none'}"></div>`;
+                return `<div class="sapseg" data-pid="${esc(p.id)}" data-sap="${sp}" title="SAP Activate: ${sp}${active ? ' (current)' : ''} — drag to set as current phase" style="flex:1;background:${active ? 'linear-gradient(90deg,#8ab8ff,#cfa9ff)' : 'rgba(255,255,255,.08)'};border-right:${si < arr.length - 1 ? '1px solid rgba(255,255,255,.15)' : 'none'};cursor:pointer"></div>`;
               }).join('')}
               <div class="gresize" style="position:absolute;right:-4px;top:0;width:8px;height:100%;cursor:ew-resize;background:rgba(255,255,255,.35)"></div>
             </div>
@@ -934,6 +936,16 @@ async function renderRoadmap() {
   // drag/resize bars
   const dayMs = 86400000;
   const toDate = off => new Date(new Date(pmin).getTime() + off * span * dayMs).toISOString().slice(0, 10);
+  document.querySelectorAll('.sapseg').forEach(seg => {
+    seg.addEventListener('click', async e => {
+      e.stopPropagation();
+      const pid = seg.dataset.pid, sp = seg.dataset.sap;
+      const p = r.projects.find(x => x.id === pid);
+      await api('/program/projects/update', 'POST', { id: pid, name: p.name, program_phase_id: p.program_phase_id, sap_phase: sp, start_date: p.start_date, end_date: p.end_date, status: p.status, light: p.light, project_type: p.project_type });
+      toast(`${p.name}: SAP phase → ${sp}`);
+      render();
+    });
+  });
   document.querySelectorAll('.gbar').forEach(bar => {
     const onDown = e => {
       const pt = e.touches ? e.touches[0] : e;
@@ -991,59 +1003,61 @@ async function renderRoadmap() {
 async function renderTimeReport() {
   const t = await api('/timereport');
   const progs = await api('/program');
-  const dels = await api('/deliverables');
-  window._dels = dels;
-  const projOptions = progs.projects.map(p => `<option value="${p.id}">${esc(p.id)} ${esc(p.name)} (${esc(p.project_type)})</option>`).join('');
-  const delOptions = dels.map(d => `<option value="${esc(d.id)}">${esc(d.id)} ${esc(d.title)}</option>`).join('');
+  const now = new Date();
+  const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const weeks = [];
+  for (let w = -3; w <= 3; w++) {
+    const d = new Date(monday); d.setDate(monday.getDate() + w * 7);
+    weeks.push(d.toISOString().slice(0, 10));
+  }
+  const weekLabel = d => { const e = new Date(d); e.setDate(e.getDate() + 6); return d + ' → ' + e.toISOString().slice(0, 10); };
+  const cell = {};
+  t.entries.forEach(e => { cell[e.week + '|' + (e.project_id || '(none)')] = (cell[e.week + '|' + (e.project_id || '(none)')] || 0) + e.hours; });
+  const projects = progs.projects;
   app.innerHTML = `
-    <h2>Time Reporting</h2>
-    <div class="sub">Report on:
-      <select onchange="setReportMode(this.value)" style="display:inline-block">
-        <option value="deliverables" ${t.report_on === 'deliverables' ? 'selected' : ''}>Deliverables</option>
-        <option value="projects" ${t.report_on === 'projects' ? 'selected' : ''}>Projects / sub-projects</option>
-      </select>
-      — toggle lives in ☰ → App store too
+    <h2>Time Reporting — by week × project</h2>
+    <div class="sub">Click a cell to log hours for that project in that week. Current week highlighted.</div>
+    <div class="panel" style="overflow-x:auto">
+      <table style="min-width:760px">
+        <tr><th>Week</th>${projects.map(p => `<th>${esc(p.name)}<div class="small muted">${esc(p.project_type)}</div></th>`).join('')}<th>Total</th></tr>
+        ${weeks.map(w => `
+          <tr style="${w === weeks[3] ? 'background:rgba(140,175,255,.08)' : ''}">
+            <td class="small" style="white-space:nowrap">${weekLabel(w)}</td>
+            ${projects.map(p => `<td style="text-align:center;cursor:pointer" title="log hours for ${esc(p.name)} week ${w}" onclick="logCell('${w}','${p.id}')">${cell[w + '|' + p.id] ? cell[w + '|' + p.id].toFixed(1) + ' h' : '·'}</td>`).join('')}
+            <td class="small" style="text-align:right">${projects.reduce((s, p) => s + (cell[w + '|' + p.id] || 0), 0).toFixed(1)} h</td>
+          </tr>`).join('')}
+      </table>
     </div>
-    <div class="grid two-col">
-      ${t.report_on === 'projects' ? `
+    <div class="grid two-col" style="margin-top:16px">
       <div class="panel">
-        <h3>Hours by project / sub-project</h3>
+        <h3>Hours by project</h3>
         <table><tr><th>Project</th><th>Hours</th><th>Entries</th></tr>
-        ${Object.entries(t.by_project || {}).map(([p, v]) => `<tr><td>${esc(p)}</td><td>${v.hours.toFixed(1)}</td><td>${v.items}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">No project-tagged hours yet.</td></tr>'}
+        ${Object.entries(t.by_project || {}).map(([p, v]) => `<tr><td>${esc(p)}</td><td>${v.hours.toFixed(1)}</td><td>${v.items}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Nothing logged yet.</td></tr>'}
         </table>
-      </div>` : `
+      </div>
       <div class="panel">
         <h3>Hours by owner</h3>
         <table><tr><th>Owner</th><th>Hours</th><th>Entries</th></tr>
         ${Object.entries(t.by_owner).map(([o, v]) => `<tr><td>${esc(o)}</td><td>${v.hours.toFixed(1)}</td><td>${v.items}</td></tr>`).join('')}
         </table>
-      </div>`}
-      
-      <div class="panel">
-        <h3>Log hours</h3>
-        <label class="small muted">Deliverable</label><select id="trDel" style="width:100%" onchange="autoProj()">${delOptions}</select>
-        <label class="small muted" style="margin-top:8px">Owner</label><input id="trOwner" style="width:100%" placeholder="Name">
-        <label class="small muted" style="margin-top:8px">Hours</label><input id="trHours" type="number" step="0.5" style="width:100%" value="1">
-        <label class="small muted" style="margin-top:8px">Project / sub-project</label><select id="trProj" style="width:100%"><option value="">— none —</option>${projOptions}</select>
-        <label class="small muted" style="margin-top:8px">Week (e.g. 2026-W44)</label><input id="trWeek" style="width:100%" placeholder="2026-W44">
-        <div style="margin-top:10px"><button class="btn" onclick="addTime()">Add entry</button></div>
-        <div id="trResult" class="small" style="margin-top:8px"></div>
       </div>
     </div>
     <div class="panel" style="margin-top:16px">
       <h3>Entries</h3>
-      <table><tr><th>ID</th><th>Deliverable</th><th>Owner</th><th>Hours</th><th>Week</th></tr>
-      ${t.entries.map(e => `<tr><td class="small">${esc(e.id)}</td><td class="small">${esc(e.deliverable_id)} ${esc(e.deliverable_title || '')}</td><td>${esc(e.owner)}</td><td>${e.hours}</td><td class="small">${esc(e.week)}</td></tr>`).join('')}
+      <table><tr><th>ID</th><th>Project</th><th>Deliverable</th><th>Owner</th><th>Hours</th><th>Week</th></tr>
+      ${t.entries.map(e => `<tr><td class="small">${esc(e.id)}</td><td class="small">${esc(e.project_id || '—')}</td><td class="small">${esc(e.deliverable_id)} ${esc(e.deliverable_title || '')}</td><td>${esc(e.owner)}</td><td>${e.hours}</td><td class="small">${esc(e.week)}</td></tr>`).join('')}
       </table>
     </div>`;
 }
-function toggleTab(id, on) {
-  let t = getTabs();
-  t = on ? [...new Set([...t, id])] : t.filter(x => x !== id);
-  localStorage.setItem('hub_tabs', JSON.stringify(t));
-  buildNav(); render();
+async function logCell(week, projectId) {
+  const owner = prompt('Your name:', window._chatUser || '');
+  if (owner === null) return;
+  const hours = prompt('Hours for ' + projectId + ' in week ' + week + ':', '1');
+  if (!hours) return;
+  const res = await api('/timereport/add', 'POST', { deliverable_id: '', owner, hours: parseFloat(hours), week, project_id: projectId });
+  if (res.ok) { toast('Logged ' + hours + ' h on ' + projectId + ' (' + week + ')'); render(); }
+  else toast(res.error || 'Error', 'err');
 }
-async function setReportMode(mode) { await api('/reportmode', 'POST', { report_on: mode }); render(); }
 function autoProj() {
   const d = window._dels ? window._dels.find(x => x.id === document.getElementById('trDel').value) : null;
   if (d && d.project_id) document.getElementById('trProj').value = d.project_id;
