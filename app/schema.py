@@ -166,6 +166,14 @@ CREATE TABLE IF NOT EXISTS mistral_config (
     enabled INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS project_sap_phases (
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    phase TEXT NOT NULL,
+    start_date TEXT NOT NULL DEFAULT '',
+    end_date TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (project_id, phase)
+);
+
 CREATE TABLE IF NOT EXISTS week_status (
     owner TEXT NOT NULL,
     week TEXT NOT NULL,

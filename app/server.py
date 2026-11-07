@@ -92,6 +92,17 @@ def init_db():
         db.execute(f"UPDATE time_entries SET project_id='' WHERE project_id IN ({q})", old_ids)
         db.execute(f"DELETE FROM wbs WHERE project_id IN ({q})", old_ids)
         db.execute(f"DELETE FROM projects WHERE id IN ({q})", old_ids)
+    db.execute("CREATE TABLE IF NOT EXISTS project_sap_phases (project_id TEXT NOT NULL REFERENCES projects(id), phase TEXT NOT NULL, start_date TEXT NOT NULL DEFAULT '', end_date TEXT NOT NULL DEFAULT '', PRIMARY KEY (project_id, phase))")
+    from datetime import timedelta as _td
+    for p in db.execute("SELECT id, start_date, end_date FROM projects").fetchall():
+        if not p["start_date"] or not p["end_date"]:
+            continue
+        s0 = date.fromisoformat(p["start_date"]); e0 = date.fromisoformat(p["end_date"])
+        total = max(1, (e0 - s0).days)
+        for i, ph in enumerate(["Discover", "Prepare", "Explore", "Realize", "Deploy", "Run"]):
+            a = s0 + _td(days=round(total * i / 6)); b = s0 + _td(days=round(total * (i + 1) / 6) - 1)
+            db.execute("INSERT OR IGNORE INTO project_sap_phases VALUES (?,?,?,?)", (p["id"], ph, a.isoformat(), b.isoformat()))
+    db.commit()
     db.commit()
     db.close()
 
@@ -711,6 +722,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"users": users, "projects": projects, "hours": {f"{k[0]}|{k[1]}": v for k, v in hours.items()}})
             if path == "/api/org":
                 return self._send(200, rows(db.execute("SELECT * FROM project_org")))
+            if path == "/api/sapphases":
+                return self._send(200, rows(db.execute("SELECT * FROM project_sap_phases ORDER BY project_id, start_date")))
             if path == "/api/wbs":
                 return self._send(200, rows(db.execute("SELECT * FROM wbs ORDER BY project_id, code")))
             if path == "/api/reportmode":
@@ -808,6 +821,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {"error": "logo too large (max ~300KB)"})
                 db.execute("INSERT INTO gate_reports (gate_id, logo, logo_name, front_title, front_description) VALUES (?,?,?,?,?) ON CONFLICT(gate_id) DO UPDATE SET logo=excluded.logo, logo_name=excluded.logo_name, front_title=excluded.front_title, front_description=excluded.front_description",
                            (gid, logo, body.get("logo_name", ""), body.get("front_title", ""), body.get("front_description", "")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/sapphases/update":
+                db.execute("INSERT INTO project_sap_phases (project_id, phase, start_date, end_date) VALUES (?,?,?,?) ON CONFLICT(project_id, phase) DO UPDATE SET start_date=excluded.start_date, end_date=excluded.end_date",
+                           (body.get("project_id"), body.get("phase"), body.get("start_date"), body.get("end_date")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/org/move":
