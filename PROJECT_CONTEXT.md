@@ -6,6 +6,7 @@ If you are a new chat session working on this project, read this file first.
 - **Repo**: `hormar0/thehub` on GitHub — https://github.com/hormar0/thehub
 - **Working branch**: `vibe/milestone-hub-c4557a`
 - **Pull request**: https://github.com/hormar0/thehub/pull/1 (all work goes there; never open a replacement PR, never push to main)
+- **The Hub home page (external URL)**: http://127.0.0.1:8080 on the host device (tablet) — open in the browser there. There is no public internet URL yet; to expose one, run a tunnel (e.g. `cloudflared tunnel` / ngrok) pointing at port 8080 and put that URL here.
 - **App code**: `app/` — `server.py` (stdlib HTTP+SQLite API), `schema.py` (schema+seed+migrations), `static/index.html` (single-page UI), `import_files.py` (xlsx importer), `install-pack.sh` / `install.sh` / `update.sh`
 
 ## How to continue in a new chat
