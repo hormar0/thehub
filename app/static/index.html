@@ -344,6 +344,7 @@ async function render() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
   if (currentView === 'program' || currentView === 'dashboard') return renderDashboard();
   if (currentView === 'projects') return renderProjects();
+  if (currentView === 'project') return renderProject();
   if (currentView === 'risks') { subView = 'raid'; currentView = 'more'; return render(); }
   if (currentView === 'time') { app = document.getElementById('app'); return renderTimeReport(); }
   if (currentView === 'gates') return renderGates();
@@ -414,7 +415,7 @@ async function renderDashboard() {
       <h3>Projects <span class="small muted">(sorted by type)</span></h3>
       ${projects.map(p => `
         <div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
-          <div style="flex:1;cursor:pointer" onclick="currentView='projects';render()">
+          <div style="flex:1;cursor:pointer" onclick="openProject('" + p.id + "')">
             <b>${esc(p.name)}</b> <span class="small muted">(${esc(p.id)})</span>
             <div class="small muted">${esc(p.project_type)}</div>
           </div>
@@ -456,7 +457,7 @@ async function renderProjects() {
     <div class="panel">
       <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
       ${projects.map(p => `
-        <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer" onclick="currentView='roadmap';render()">
+        <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer" onclick="openProject('" + p.id + "')">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <b>${esc(p.name)}</b> <span class="small muted">(${esc(p.id)})</span>
             <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
@@ -466,6 +467,48 @@ async function renderProjects() {
       </div>
     </div>`;
 }
+
+let currentProject = null;
+async function openProject(id) { currentProject = id; currentView = 'project'; render(); }
+async function renderProject() {
+  const [progs, dels, wbs, t, gates] = await Promise.all([api('/program'), api('/deliverables'), api('/wbs'), api('/timereport'), api('/gates')]);
+  const p = progs.projects.find(x => x.id === currentProject);
+  if (!p) { currentView = 'projects'; return render(); }
+  const pd = dels.filter(d => d.project_id === p.id);
+  const pw = wbs.filter(w => w.project_id === p.id);
+  const pt = t.entries.filter(e => e.project_id === p.id);
+  const pGates = gates.filter(g => pd.some(d => d.gate_id === g.id));
+  const hours = pt.reduce((s, e) => s + e.hours, 0);
+  app.innerHTML = `
+    <h2>${esc(p.name)}</h2>
+    <div class="sub">${esc(p.project_type)} · SAP Activate: ${esc(p.sap_phase)} · ${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
+    <div class="grid cards" style="margin-bottom:16px">
+      <div class="card"><div class="kpi rag-${esc(p.light)}" style="-webkit-text-fill-color:currentColor;background:none">${esc(p.light.toUpperCase())}</div><div class="lbl">RAG status</div></div>
+      <div class="card"><div class="kpi">${pd.length}</div><div class="lbl">Deliverables</div></div>
+      <div class="card"><div class="kpi">${hours.toFixed(1)} h</div><div class="lbl">Hours logged</div></div>
+      <div class="card"><div class="kpi">${pw.length}</div><div class="lbl">WBS nodes</div></div>
+      <div class="card"><div class="kpi">${pGates.length}</div><div class="lbl">Gates touched</div></div>
+    </div>
+    <div class="grid two-col">
+      <div class="panel">
+        <h3>Deliverables in this project</h3>
+        <table><tr><th>ID</th><th>Deliverable</th><th>State</th><th>Gate</th><th>Due</th></tr>
+        ${pd.map(d => `<tr><td class="small">${esc(d.id)}</td><td>${esc(d.title)}</td><td>${statePill(d.state)}</td><td class="small">${esc(d.gate_id)}</td><td class="small">${esc(d.due_date)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">None linked.</td></tr>'}
+        </table>
+      </div>
+      <div class="panel">
+        <h3>WBS</h3>
+        ${pw.map(w => `<div class="small" style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)">${esc(w.code)} ${esc(w.name)} <span class="muted">${esc(w.start_date)} → ${esc(w.end_date)}</span></div>`).join('') || '<div class="muted">No WBS yet.</div>'}
+        <h3 style="margin-top:14px">Hours this project</h3>
+        <table><tr><th>Owner</th><th>Hours</th><th>Week</th></tr>
+        ${pt.map(e => `<tr><td>${esc(e.owner)}</td><td>${e.hours}</td><td class="small">${esc(e.week)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">None.</td></tr>'}
+        </table>
+      </div>
+    </div>
+    <div style="margin-top:14px"><button class="btn ghost" onclick="currentView='projects';render()">← All projects</button>
+    <button class="btn ghost" onclick="currentView='roadmap';render()">Roadmap</button></div>`;
+}
+
 async function renderGates() {
   const gates = await api('/gates');
   const current = gates.find(g => g.status === 'in_progress') || gates.find(g => g.status === 'upcoming');
