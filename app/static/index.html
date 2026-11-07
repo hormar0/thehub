@@ -416,7 +416,7 @@ async function renderDashboard() {
         <div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
           <div style="flex:1;cursor:pointer" onclick="currentView='projects';render()">
             <b>${esc(p.name)}</b>
-            <div class="small muted">${esc(p.project_type)} · SAP ${esc(p.sap_phase)} · ${p.deliverable_count} deliverables · ${esc(p.status)}</div>
+            <div class="small muted">${esc(p.project_type)}</div>
           </div>
           <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
         </div>`).join('')}
@@ -452,7 +452,7 @@ async function renderProjects() {
   const projects = [...r.projects].sort((a, b) => (a.project_type || '').localeCompare(b.project_type || '') || a.name.localeCompare(b.name));
   app.innerHTML = `
     <h2>Projects</h2>
-    <div class="sub">Sorted by type · RAG circle per project · click a row for the roadmap</div>
+    <div class="sub">Sorted by type · click a card for the roadmap</div>
     <div class="panel">
       <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
       ${projects.map(p => `
@@ -461,8 +461,7 @@ async function renderProjects() {
             <b>${esc(p.name)}</b>
             <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
           </div>
-          <div class="small muted" style="margin-top:4px">${esc(p.project_type)} · SAP ${esc(p.sap_phase)}</div>
-          <div class="small muted">${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
+          <div class="small muted" style="margin-top:4px">${esc(p.project_type)}</div>
         </div>`).join('')}
       </div>
     </div>`;
