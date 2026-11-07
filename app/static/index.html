@@ -415,7 +415,7 @@ async function renderDashboard() {
       ${projects.map(p => `
         <div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
           <div style="flex:1;cursor:pointer" onclick="currentView='projects';render()">
-            <b>${esc(p.name)}</b>
+            <b>${esc(p.name)}</b> <span class="small muted">(${esc(p.id)})</span>
             <div class="small muted">${esc(p.project_type)}</div>
           </div>
           <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
@@ -458,7 +458,7 @@ async function renderProjects() {
       ${projects.map(p => `
         <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer" onclick="currentView='roadmap';render()">
           <div style="display:flex;align-items:center;justify-content:space-between">
-            <b>${esc(p.name)}</b>
+            <b>${esc(p.name)}</b> <span class="small muted">(${esc(p.id)})</span>
             <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
           </div>
           <div class="small muted" style="margin-top:4px">${esc(p.project_type)}</div>
