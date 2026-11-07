@@ -435,7 +435,7 @@ async function renderDashboard() {
           <option value="issues" ${(window._psort||'')==='issues'?'selected':''}>Sort: most issues</option>
         </select>
       </h3>
-      <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:stretch">
+      <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:start">
       ${projects.map(p => `
         <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer;display:flex;align-items:center;gap:10px;min-height:64px" onclick="openProject('${p.id}')">
           <span class="tl tl-${esc(p.light)} tl-lg" style="flex:0 0 auto" title="${esc(p.light)}"></span>
