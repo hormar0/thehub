@@ -40,6 +40,11 @@ def init_db():
     tcols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
     if "note" not in tcols:
         db.execute("ALTER TABLE time_entries ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+    ocols = [r[1] for r in db.execute("PRAGMA table_info(project_org)")] if db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='project_org'").fetchone() else []
+    if ocols and "role" not in ocols:
+        db.execute("ALTER TABLE project_org ADD COLUMN role TEXT NOT NULL DEFAULT 'stream'")
+        db.execute("ALTER TABLE project_org ADD COLUMN x REAL NOT NULL DEFAULT 0")
+        db.execute("ALTER TABLE project_org ADD COLUMN y REAL NOT NULL DEFAULT 0")
     db.execute("CREATE TABLE IF NOT EXISTS week_status (owner TEXT NOT NULL, week TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft', PRIMARY KEY (owner, week))")
     # per-day time entries: add day column on existing DBs before seeding
     tcols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
@@ -829,8 +834,13 @@ class Handler(BaseHTTPRequestHandler):
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/org/move":
-                db.execute("INSERT INTO project_org (project_id, username, stream) VALUES (?,?,?) ON CONFLICT(project_id, username) DO UPDATE SET stream=excluded.stream",
-                           (body.get("project_id"), body.get("username"), body.get("stream", "")))
+                db.execute("INSERT INTO project_org (project_id, username, stream, role, x, y) VALUES (?,?,?,?,?,?) ON CONFLICT(project_id, username) DO UPDATE SET stream=excluded.stream, role=excluded.role, x=excluded.x, y=excluded.y",
+                           (body.get("project_id"), body.get("username"), body.get("stream", ""), body.get("role", "stream"), float(body.get("x", 0)), float(body.get("y", 0))))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/org/pos":
+                db.execute("INSERT INTO project_org (project_id, username, stream, role, x, y) VALUES (?,?,?,?,?,?) ON CONFLICT(project_id, username) DO UPDATE SET x=excluded.x, y=excluded.y",
+                           (body.get("project_id"), body.get("username"), body.get("stream", ""), body.get("role", "stream"), float(body.get("x", 0)), float(body.get("y", 0))))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/org/remove":

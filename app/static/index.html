@@ -554,42 +554,87 @@ async function saveCharter() {
 }
 async function renderOrgChart(pid) {
   const [org, users, ws] = await Promise.all([api('/org'), api('/users'), api('/workstreams')]);
-  const streams = [...ws.map(w => w.name), 'Staff functions'];
   const mine = org.filter(o => o.project_id === pid);
+  const streams = ws.map(w => w.name);
   const box = document.getElementById('orgChart');
-  box.innerHTML = streams.map(st => `
-    <div class="kb-col" data-stream="${esc(st)}" style="min-width:180px;min-height:120px">
-      <div class="kb-head"><span>${esc(st)}</span><span class="kb-count">${mine.filter(o => o.stream === st).length}</span></div>
-      ${mine.filter(o => o.stream === st).map(o => {
+  const W = 760, H = 460;
+  // default layout: PM top-center, staff boxes on sides, streams along the bottom
+  const pm = mine.find(o => o.role === 'pm') || mine[0];
+  const staff = mine.filter(o => o.role === 'staff');
+  const streamers = mine.filter(o => o.role !== 'pm' && o.role !== 'staff');
+  const layout = o => {
+    if (o.x || o.y) return [o.x, o.y];
+    if (o.role === 'pm' || o === pm && !o.role) return [W / 2 - 70, 12];
+    if (o.role === 'staff') { const i = staff.indexOf(o); return [i % 2 === 0 ? 20 : W - 160, 110 + Math.floor(i / 2) * 90]; }
+    const i = streamers.indexOf(o); return [20 + (i % 4) * 185, H - 90 - Math.floor(i / 4) * 90];
+  };
+  box.innerHTML = `
+    <div id="orgCanvas" style="position:relative;width:${W}px;height:${H}px;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:12px;overflow:auto;touch-action:none">
+      <svg id="orgLines" width="${W}" height="${H}" style="position:absolute;left:0;top:0;pointer-events:none"></svg>
+      ${mine.map(o => {
         const u = users.find(x => x.username === o.username);
-        return `<div class="kb-card" draggable="true" data-user="${esc(o.username)}" style="cursor:grab">${esc(u ? u.name : o.username)} <span class="small muted">${esc(u && u.skills ? u.skills.split(',')[0] : '')}</span></div>`;
+        const [x, y] = layout(o);
+        return `<div class="orgbox" data-user="${esc(o.username)}" data-role="${esc(o.role)}" style="position:absolute;left:${x}px;top:${y}px;width:140px;padding:8px 10px;border-radius:10px;background:linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.05));border:1px solid ${o.role === 'pm' ? 'rgba(207,169,255,.7)' : o.role === 'staff' ? 'rgba(110,168,255,.6)' : 'rgba(94,227,138,.5)'};cursor:grab;touch-action:none">
+          <b>${esc(u ? u.name : o.username)}</b><div class="small muted">${esc(o.role === 'pm' ? 'Project Manager' : o.role === 'staff' ? 'Staff function' : o.stream)}</div>
+        </div>`;
       }).join('')}
-    </div>`).join('') + `
-    <div class="kb-col" style="min-width:200px">
-      <div class="kb-head"><span>Add person</span></div>
-      <select id="orgAdd" style="width:100%"><option value="">— choose —</option>${users.map(u => `<option value="${esc(u.username)}">${esc(u.name)}</option>`).join('')}</select>
-      <button class="btn ghost" style="margin-top:6px" onclick="orgAdd('${pid}')">+ Add to stream</button>
-      <select id="orgAddStream" style="width:100%;margin-top:6px">${streams.map(s => `<option>${esc(s)}</option>`).join('')}</select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+      <select id="orgAdd">${users.map(u => `<option value="${esc(u.username)}">${esc(u.name)}</option>`).join('')}</select>
+      <select id="orgAddRole"><option value="stream">Stream</option><option value="staff">Staff function</option><option value="pm">Project Manager</option></select>
+      <select id="orgAddStream"><option value="">— stream —</option>${streams.map(s => `<option>${esc(s)}</option>`).join('')}</select>
+      <button class="btn ghost" onclick="orgAdd('${pid}')">+ Add</button>
+      <span class="small muted">drag boxes (touch or mouse) to arrange; lines follow automatically</span>
     </div>`;
-  box.querySelectorAll('.kb-card').forEach(card => {
-    card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', card.dataset.user));
+  const canvas = document.getElementById('orgCanvas');
+  const draw = () => {
+    const svg = document.getElementById('orgLines');
+    const boxes = [...canvas.querySelectorAll('.orgbox')];
+    const center = b => { const r = b.getBoundingClientRect(), c = canvas.getBoundingClientRect(); return [r.left - c.left + r.width / 2, r.top - c.top + r.height / 2]; };
+    const pmBox = boxes.find(b => b.dataset.role === 'pm');
+    let lines = '';
+    if (pmBox) {
+      const [px, py] = center(pmBox);
+      boxes.filter(b => b !== pmBox).forEach(b => {
+        const [x, y] = center(b);
+        lines += `<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="rgba(200,215,255,.45)" stroke-width="1.5"/>`;
+      });
+    }
+    svg.innerHTML = lines;
+  };
+  box.querySelectorAll('.orgbox').forEach(bx => {
+    const onDown = e => {
+      const pt = e.touches ? e.touches[0] : e;
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const ox = bx.offsetLeft, oy = bx.offsetTop, sx = pt.clientX, sy = pt.clientY;
+      const move = ev => {
+        const p = ev.touches ? ev.touches[0] : ev;
+        bx.style.left = Math.max(0, Math.min(W - 140, ox + p.clientX - sx)) + 'px';
+        bx.style.top = Math.max(0, Math.min(H - 50, oy + p.clientY - sy)) + 'px';
+        draw();
+      };
+      const up = async ev => {
+        document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+        document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
+        await api('/org/pos', 'POST', { project_id: pid, username: bx.dataset.user, x: bx.offsetLeft, y: bx.offsetTop });
+      };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+      document.addEventListener('touchmove', move, { passive: false }); document.addEventListener('touchend', up);
+    };
+    bx.addEventListener('mousedown', onDown);
+    bx.addEventListener('touchstart', onDown, { passive: false });
   });
-  box.querySelectorAll('.kb-col[data-stream]').forEach(col => {
-    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
-    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
-    col.addEventListener('drop', async e => {
-      e.preventDefault(); col.classList.remove('drag-over');
-      const un = e.dataTransfer.getData('text/plain');
-      if (un) { await api('/org/move', 'POST', { project_id: pid, username: un, stream: col.dataset.stream }); toast(`Moved ${un} → ${col.dataset.stream}`); render(); }
-    });
-  });
+  draw();
+  window.addEventListener('resize', draw);
 }
 async function orgAdd(pid) {
   const un = document.getElementById('orgAdd').value;
   const st = document.getElementById('orgAddStream').value;
+  const role = document.getElementById('orgAddRole').value;
   if (!un) return;
-  await api('/org/move', 'POST', { project_id: pid, username: un, stream: st });
-  toast(`Added ${un} → ${st}`); render();
+  await api('/org/move', 'POST', { project_id: pid, username: un, stream: st, role });
+  toast(`Added ${un} (${role})`); render();
 }
 async function renderGates() {
   const gates = await api('/gates');
@@ -1019,9 +1064,9 @@ async function renderRoadmap() {
           return `
         <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.07);align-items:center">
           <div>
-            <div style="display:flex;align-items:center;gap:7px"><span class="tl tl-${p.light}"></span><span class="small muted">${esc(p.project_type)}</span></div>
-            <div class="small muted">${esc(p.name)}</div>
-            <div class="small muted">${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
+            <div style="display:flex;align-items:center;gap:10px"><span class="tl tl-${p.light} tl-lg"></span>
+              <div><div style="font-weight:700">${esc(p.name)}</div><div class="small muted">${esc(p.project_type)}</div></div>
+            </div>
           </div>
           <div style="position:relative;min-height:44px;background:rgba(255,255,255,.04);border-radius:8px">
             ${(sapph.filter(sp => sp.project_id === p.id).sort((a, b) => a.start_date.localeCompare(b.start_date))).map(sp => `

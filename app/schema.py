@@ -185,6 +185,9 @@ CREATE TABLE IF NOT EXISTS project_org (
     project_id TEXT NOT NULL REFERENCES projects(id),
     username TEXT NOT NULL REFERENCES users(username),
     stream TEXT NOT NULL DEFAULT '',
+    role TEXT NOT NULL DEFAULT 'stream',   -- pm | staff | stream
+    x REAL NOT NULL DEFAULT 0,
+    y REAL NOT NULL DEFAULT 0,
     PRIMARY KEY (project_id, username)
 );
 
