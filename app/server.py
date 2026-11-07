@@ -569,6 +569,8 @@ class Handler(BaseHTTPRequestHandler):
             data = json.dumps(body).encode()
         self.send_response(code)
         self.send_header("Content-Type", content_type)
+        if safe.endswith("index.html"):
+            self.send_header("Cache-Control", "no-store, must-revalidate")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)

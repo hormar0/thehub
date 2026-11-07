@@ -506,18 +506,22 @@ async function renderProject() {
   const hours = pt.reduce((s, e) => s + e.hours, 0);
   app.innerHTML = `
     <h2>${esc(p.name)}</h2>
-    <div class="sub">${esc(p.project_type)} · SAP Activate: ${esc(p.sap_phase)} · ${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}</div>
+    <div class="sub">${esc(p.project_type)} · SAP Activate: ${esc(p.sap_phase)} · ${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}
+        · <a href="https://teams.microsoft.com" target="_blank" style="color:#8ab8ff">📎 Teams project site</a></div>
     <div class="grid cards" style="margin-bottom:16px">
       <div class="card"><div class="kpi rag-${esc(p.light)}" style="-webkit-text-fill-color:currentColor;background:none">${esc(p.light.toUpperCase())}</div><div class="lbl">RAG status</div></div>
       <div class="card"><div class="kpi">${pd.length}</div><div class="lbl">Deliverables</div></div>
-      <div class="card"><div class="kpi">${hours.toFixed(1)} h</div><div class="lbl">Hours logged</div></div>
       <div class="card"><div class="kpi">${pw.length}</div><div class="lbl">WBS nodes</div></div>
       <div class="card"><div class="kpi">${pGates.length}</div><div class="lbl">Gates touched</div></div>
     </div>
     <div class="panel" style="margin-bottom:16px">
-      <h3>Project charter — scope</h3>
-      <textarea id="charterScope" rows="3" style="width:100%" placeholder="Scope, objectives, in/out of scope…" onblur="saveCharter()">${esc(p.charter_scope || '')}</textarea>
-      <div class="small muted" style="margin-top:4px" id="charterStatus"></div>
+      <h3>Project charter</h3>
+      <label class="small muted">Scope</label>
+      <input id="charterScope" style="width:100%" placeholder="Scope of this project…" value="${esc(p.charter_scope || '')}">
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+        <button class="btn" onclick="saveCharter()">Save</button>
+        <span class="small muted" id="charterStatus"></span>
+      </div>
     </div>
     <div class="panel" style="margin-bottom:16px">
       <h3>Project organization — drag people between streams / staff functions</h3>
