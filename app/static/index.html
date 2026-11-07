@@ -543,9 +543,9 @@ async function renderProject() {
         </table>
       </div>
     </div>
-    renderOrgChart(p.id);
     <div style="margin-top:14px"><button class="btn ghost" onclick="currentView='projects';render()">← All projects</button>
-    <button class="btn ghost" onclick="currentView='roadmap';render()">Roadmap</button></div>`;
+    <button class="btn ghost" onclick="currentView='program';render()">Roadmap</button></div>`;
+  renderOrgChart(p.id);
 }
 
 
