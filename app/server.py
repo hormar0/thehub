@@ -48,6 +48,10 @@ def init_db():
         ("PH-DISSOLVE", "Dissolution", "2027-04-01", "2027-06-30", 4),
     ])
     db.execute("DELETE FROM program_phases WHERE id NOT IN ('PH-FORMULATE','PH-ORGANIZE','PH-DEPLOY','PH-APPRAISE','PH-DISSOLVE')")
+    # add charter_scope column on existing DBs
+    pcols = [r[1] for r in db.execute("PRAGMA table_info(projects)")]
+    if "charter_scope" not in pcols:
+        db.execute("ALTER TABLE projects ADD COLUMN charter_scope TEXT NOT NULL DEFAULT ''")
     # allow project-only time entries (deliverable_id nullable) on existing DBs
     cols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
     if cols and "deliverable_id" in cols:
