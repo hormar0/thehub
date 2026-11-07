@@ -1071,7 +1071,7 @@ class Handler(BaseHTTPRequestHandler):
                     d0 = datetime.strptime(day, "%Y-%m-%d")
                     d0 = d0 - timedelta(days=(d0.weekday()))
                     week = d0.strftime("%Y-%m-%d")
-                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?,?,?,?)", (tid, body.get("deliverable_id") or None, body.get("owner"), float(body.get("hours", 0)), week, body.get("project_id", ""), day))
+                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?,?,?,?)", (tid, body.get("deliverable_id") or None, body.get("owner"), float(body.get("hours", 0)), week, body.get("project_id", ""), day, body.get("note", "")))
                 db.commit()
                 return self._send(200, {"ok": True, "id": tid})
             if path == "/api/program/phases/add":
