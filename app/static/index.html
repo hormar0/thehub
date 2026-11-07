@@ -342,8 +342,8 @@ document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click',
 }));
 async function render() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
-  if (currentView === 'home') return renderHome();
-  if (currentView === 'program' || currentView === 'dashboard') return renderDashboard();
+  if (currentView === 'home' || currentView === 'dashboard') return renderDashboard();
+  if (currentView === 'program') return renderRoadmap();
   if (currentView === 'projects') return renderProjects();
   if (currentView === 'project') return renderProject();
   if (currentView === 'risks') { subView = 'raid'; currentView = 'more'; return render(); }
@@ -381,17 +381,6 @@ function lightPicker(current, onPick) {
   return `<span style="display:inline-flex;gap:6px;align-items:center">${['green','amber','red'].map(l => `<span class="tl tl-${l}" title="set ${l}" onclick="(${onPick})('${l}')"></span>`).join('')}</span>`;
 }
 const BAND_CLS = { green: 'tl-green', amber: 'tl-amber', red: 'tl-red' };
-async function renderHome() {
-  app.innerHTML = `
-    <h2>The Hub</h2>
-    <div class="sub">Program control center — pick a section:</div>
-    <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-      ${getTabs().concat(['gates','readiness','work','planning','more'].filter(x => !getTabs().includes(x))).slice(0, 6).map(id => {
-        const v = ALL_VIEWS.find(x => x.id === id);
-        return `<div class="card" style="cursor:pointer" onclick="currentView='${id}';render()"><b>${v.icon} ${v.label}</b></div>`;
-      }).join('')}
-    </div>`;
-}
 async function renderDashboard() {
   const d = await api('/dashboard');
   const g = d.next_gate, r = d.next_gate_readiness;
@@ -425,7 +414,7 @@ async function renderDashboard() {
         <span class="small muted">${pl.toUpperCase()}</span>
       </div>
       <div style="flex:1">
-        <h2 style="margin-bottom:2px">Program</h2>
+        <h2 style="margin-bottom:2px">The Hub — Program overview</h2>
         <div class="sub" style="margin-bottom:12px">${esc(d.today)} · click to open roadmap</div>
         <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
           <div class="card"><div class="kpi">${r ? r.pct + '%' : '—'}</div><div class="lbl">Evidence readiness · next gate ${esc(g?.id)}</div></div>
