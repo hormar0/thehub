@@ -209,7 +209,7 @@
 <body>
 <header>
   <button id="hamburger" title="Menu" style="background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1">☰</button>
-  <div class="logo" style="margin-left:auto;cursor:pointer" onclick="currentView='program';render()" title="Home">The<span>Hub</span></div>
+  <div class="logo" style="margin-left:auto;cursor:pointer" onclick="currentView='home';render()" title="Home">The<span>Hub</span></div>
   <nav id="nav"></nav>
   <div id="menu" style="display:none;position:absolute;top:44px;left:10px;background:linear-gradient(165deg, rgba(52,62,92,.85), rgba(22,28,48,.9));border:1px solid var(--glass-border);border-radius:14px;padding:8px;min-width:240px;max-height:70vh;overflow-y:auto;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);z-index:30"></div>
 </header>
@@ -342,6 +342,7 @@ document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click',
 }));
 async function render() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
+  if (currentView === 'home') return renderHome();
   if (currentView === 'program' || currentView === 'dashboard') return renderDashboard();
   if (currentView === 'projects') return renderProjects();
   if (currentView === 'project') return renderProject();
@@ -380,6 +381,17 @@ function lightPicker(current, onPick) {
   return `<span style="display:inline-flex;gap:6px;align-items:center">${['green','amber','red'].map(l => `<span class="tl tl-${l}" title="set ${l}" onclick="(${onPick})('${l}')"></span>`).join('')}</span>`;
 }
 const BAND_CLS = { green: 'tl-green', amber: 'tl-amber', red: 'tl-red' };
+async function renderHome() {
+  app.innerHTML = `
+    <h2>The Hub</h2>
+    <div class="sub">Program control center — pick a section:</div>
+    <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+      ${getTabs().concat(['gates','readiness','work','planning','more'].filter(x => !getTabs().includes(x))).slice(0, 6).map(id => {
+        const v = ALL_VIEWS.find(x => x.id === id);
+        return `<div class="card" style="cursor:pointer" onclick="currentView='${id}';render()"><b>${v.icon} ${v.label}</b></div>`;
+      }).join('')}
+    </div>`;
+}
 async function renderDashboard() {
   const d = await api('/dashboard');
   const g = d.next_gate, r = d.next_gate_readiness;
@@ -387,7 +399,21 @@ async function renderDashboard() {
   const openRisks = raid.filter(x => x.type === 'risk' && x.status !== 'closed').length;
   const openHigh = raid.filter(x => x.severity === 'high' || x.severity === 'very_high').length;
   const pl = d.program_light;
-  const projects = [...d.projects].sort((a, b) => (a.project_type || '').localeCompare(b.project_type || '') || a.name.localeCompare(b.name));
+  const raidAll = await api('/raid');
+  const openByProj = {};
+  const delsAll = await api('/deliverables');
+  delsAll.forEach(dd => { if (dd.state !== 'verified') openByProj[dd.project_id] = (openByProj[dd.project_id] || 0) + 1; });
+  const issuesByProj = {};
+  raidAll.forEach(r => { if (r.status !== 'closed') { const dp = delsAll.find(dd => (r.description || '').includes(dd.id)); if (dp) issuesByProj[dp.project_id] = (issuesByProj[dp.project_id] || 0) + 1; } });
+  const psort = window._psort || 'type';
+  const ragRank = { red: 0, amber: 1, green: 2 };
+  const projects = [...d.projects].sort((a, b) => {
+    if (psort === 'rag') return ragRank[a.light] - ragRank[b.light] || a.name.localeCompare(b.name);
+    if (psort === 'name') return a.name.localeCompare(b.name);
+    if (psort === 'open') return (openByProj[b.id] || 0) - (openByProj[a.id] || 0);
+    if (psort === 'issues') return (issuesByProj[b.id] || 0) - (issuesByProj[a.id] || 0);
+    return (a.project_type || '').localeCompare(b.project_type || '') || a.name.localeCompare(b.name);
+  });
   app.innerHTML = `
     <div class="panel" style="display:flex;gap:24px;align-items:stretch;margin-bottom:16px">
       <div style="display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:center;padding:6px 10px;border-right:1px solid var(--glass-border)">
@@ -412,15 +438,25 @@ async function renderDashboard() {
       </div>
     </div>
     <div class="panel" style="margin-bottom:16px">
-      <h3>Projects <span class="small muted">(sorted by type)</span></h3>
+      <h3>Projects
+        <select id="projSort" onchange="window._psort=this.value;render()" style="margin-left:10px">
+          <option value="type" ${(window._psort||'type')==='type'?'selected':''}>Sort: type</option>
+          <option value="rag" ${(window._psort||'')==='rag'?'selected':''}>Sort: RAG status</option>
+          <option value="name" ${(window._psort||'')==='name'?'selected':''}>Sort: name</option>
+          <option value="open" ${(window._psort||'')==='open'?'selected':''}>Sort: most open deliverables</option>
+          <option value="issues" ${(window._psort||'')==='issues'?'selected':''}>Sort: most issues</option>
+        </select>
+      </h3>
+      <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
       ${projects.map(p => `
-        <div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
-          <div style="flex:1;cursor:pointer" onclick="openProject('" + p.id + "')">
-            <b>${esc(p.name)}</b> <span class="small muted">(${esc(p.id)})</span>
-            <div class="small muted">${esc(p.project_type)}</div>
+        <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer" onclick="openProject('${p.id}')">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <b>${esc(p.name)}</b>
+            <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
           </div>
-          <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
+          <div class="small muted" style="margin-top:4px">${esc(p.project_type)}</div>
         </div>`).join('')}
+      </div>
     </div>
     <div class="grid two-col">
       <div class="panel">
@@ -457,7 +493,7 @@ async function renderProjects() {
     <div class="panel">
       <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
       ${projects.map(p => `
-        <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer" onclick="openProject('" + p.id + "')">
+        <div class="card rag-outline rag-${esc(p.light)}" style="cursor:pointer" onclick="openProject('${p.id}')">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <b>${esc(p.name)}</b> <span class="small muted">(${esc(p.id)})</span>
             <span class="tl tl-${esc(p.light)} tl-lg" title="${esc(p.light)}"></span>
@@ -489,6 +525,15 @@ async function renderProject() {
       <div class="card"><div class="kpi">${pw.length}</div><div class="lbl">WBS nodes</div></div>
       <div class="card"><div class="kpi">${pGates.length}</div><div class="lbl">Gates touched</div></div>
     </div>
+    <div class="panel" style="margin-bottom:16px">
+      <h3>Project charter — scope</h3>
+      <textarea id="charterScope" rows="3" style="width:100%" placeholder="Scope, objectives, in/out of scope…" onblur="saveCharter()">${esc(p.charter_scope || '')}</textarea>
+      <div class="small muted" style="margin-top:4px" id="charterStatus"></div>
+    </div>
+    <div class="panel" style="margin-bottom:16px">
+      <h3>Project organization — drag people between streams / staff functions</h3>
+      <div id="orgChart" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+    </div>
     <div class="grid two-col">
       <div class="panel">
         <h3>Deliverables in this project</h3>
@@ -505,10 +550,56 @@ async function renderProject() {
         </table>
       </div>
     </div>
+    renderOrgChart(p.id);
     <div style="margin-top:14px"><button class="btn ghost" onclick="currentView='projects';render()">← All projects</button>
     <button class="btn ghost" onclick="currentView='roadmap';render()">Roadmap</button></div>`;
 }
 
+
+async function saveCharter() {
+  const p = (await api('/program')).projects.find(x => x.id === currentProject);
+  await api('/program/projects/update', 'POST', { id: p.id, name: p.name, program_phase_id: p.program_phase_id, sap_phase: p.sap_phase, start_date: p.start_date, end_date: p.end_date, status: p.status, light: p.light, project_type: p.project_type, charter_scope: document.getElementById('charterScope').value });
+  document.getElementById('charterStatus').textContent = 'Saved.';
+}
+async function renderOrgChart(pid) {
+  const [org, users, ws] = await Promise.all([api('/org'), api('/users'), api('/workstreams')]);
+  const streams = [...ws.map(w => w.name), 'Staff functions'];
+  const mine = org.filter(o => o.project_id === pid);
+  const box = document.getElementById('orgChart');
+  box.innerHTML = streams.map(st => `
+    <div class="kb-col" data-stream="${esc(st)}" style="min-width:180px;min-height:120px">
+      <div class="kb-head"><span>${esc(st)}</span><span class="kb-count">${mine.filter(o => o.stream === st).length}</span></div>
+      ${mine.filter(o => o.stream === st).map(o => {
+        const u = users.find(x => x.username === o.username);
+        return `<div class="kb-card" draggable="true" data-user="${esc(o.username)}" style="cursor:grab">${esc(u ? u.name : o.username)} <span class="small muted">${esc(u && u.skills ? u.skills.split(',')[0] : '')}</span></div>`;
+      }).join('')}
+    </div>`).join('') + `
+    <div class="kb-col" style="min-width:200px">
+      <div class="kb-head"><span>Add person</span></div>
+      <select id="orgAdd" style="width:100%"><option value="">— choose —</option>${users.map(u => `<option value="${esc(u.username)}">${esc(u.name)}</option>`).join('')}</select>
+      <button class="btn ghost" style="margin-top:6px" onclick="orgAdd('${pid}')">+ Add to stream</button>
+      <select id="orgAddStream" style="width:100%;margin-top:6px">${streams.map(s => `<option>${esc(s)}</option>`).join('')}</select>
+    </div>`;
+  box.querySelectorAll('.kb-card').forEach(card => {
+    card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', card.dataset.user));
+  });
+  box.querySelectorAll('.kb-col[data-stream]').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', async e => {
+      e.preventDefault(); col.classList.remove('drag-over');
+      const un = e.dataTransfer.getData('text/plain');
+      if (un) { await api('/org/move', 'POST', { project_id: pid, username: un, stream: col.dataset.stream }); toast(`Moved ${un} → ${col.dataset.stream}`); render(); }
+    });
+  });
+}
+async function orgAdd(pid) {
+  const un = document.getElementById('orgAdd').value;
+  const st = document.getElementById('orgAddStream').value;
+  if (!un) return;
+  await api('/org/move', 'POST', { project_id: pid, username: un, stream: st });
+  toast(`Added ${un} → ${st}`); render();
+}
 async function renderGates() {
   const gates = await api('/gates');
   const current = gates.find(g => g.status === 'in_progress') || gates.find(g => g.status === 'upcoming');

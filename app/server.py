@@ -56,21 +56,21 @@ def init_db():
         db.execute("DROP TABLE time_entries")
         db.execute("ALTER TABLE time_entries_new RENAME TO time_entries")
     # migrate projects to the rollout/cell set on every start
-    db.executemany("INSERT OR REPLACE INTO projects VALUES (?,?,?,?,?,?,?,?,?)", [
-        ("PRJ-R1", "Factory China", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout"),
-        ("PRJ-R2", "Planning Gallin", "PH-ORGANIZE", "Realize", "2026-03-01", "2026-10-30", "active", "amber", "rollout"),
-        ("PRJ-R3", "Market Western Europe", "PH-DEPLOY", "Deploy", "2026-07-01", "2026-12-31", "planned", "green", "rollout"),
-        ("PRJ-R4", "Version 2 North America", "PH-DEPLOY", "Deploy", "2026-09-01", "2027-02-28", "planned", "amber", "rollout"),
-        ("PRJ-C1", "Data Migration", "PH-ORGANIZE", "Realize", "2026-02-15", "2026-06-30", "active", "green", "cell"),
-        ("PRJ-C2", "Testing", "PH-DEPLOY", "Realize", "2026-06-01", "2026-11-30", "planned", "amber", "cell"),
-        ("PRJ-C3", "Cut over", "PH-DEPLOY", "Deploy", "2026-11-01", "2027-01-31", "planned", "red", "cell"),
-        ("PRJ-C4", "Hypercare", "PH-APPRAISE", "Deploy", "2027-02-01", "2027-03-31", "planned", "green", "cell"),
-        ("PRJ-C5", "Authorization", "PH-ORGANIZE", "Explore", "2026-03-01", "2026-07-31", "planned", "green", "cell"),
-        ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell"),
-        ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell"),
-        ("PRJ-V1", "Version 1", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout"),
-        ("PRJ-V2", "Version 2", "PH-DEPLOY", "Realize", "2026-06-01", "2026-12-31", "planned", "amber", "rollout"),
-        ("PRJ-V3", "Version 3", "PH-APPRAISE", "Deploy", "2027-01-01", "2027-04-30", "planned", "green", "rollout"),
+    db.executemany("INSERT OR REPLACE INTO projects (id, name, program_phase_id, sap_phase, start_date, end_date, status, light, project_type, charter_scope) VALUES (?,?,?,?,?,?,?,?,?,?)", [
+        ("PRJ-R1", "Factory China", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", ""),
+        ("PRJ-R2", "Planning Gallin", "PH-ORGANIZE", "Realize", "2026-03-01", "2026-10-30", "active", "amber", "rollout", ""),
+        ("PRJ-R3", "Market Western Europe", "PH-DEPLOY", "Deploy", "2026-07-01", "2026-12-31", "planned", "green", "rollout", ""),
+        ("PRJ-R4", "Version 2 North America", "PH-DEPLOY", "Deploy", "2026-09-01", "2027-02-28", "planned", "amber", "rollout", ""),
+        ("PRJ-C1", "Data Migration", "PH-ORGANIZE", "Realize", "2026-02-15", "2026-06-30", "active", "green", "cell", ""),
+        ("PRJ-C2", "Testing", "PH-DEPLOY", "Realize", "2026-06-01", "2026-11-30", "planned", "amber", "cell", ""),
+        ("PRJ-C3", "Cut over", "PH-DEPLOY", "Deploy", "2026-11-01", "2027-01-31", "planned", "red", "cell", ""),
+        ("PRJ-C4", "Hypercare", "PH-APPRAISE", "Deploy", "2027-02-01", "2027-03-31", "planned", "green", "cell", ""),
+        ("PRJ-C5", "Authorization", "PH-ORGANIZE", "Explore", "2026-03-01", "2026-07-31", "planned", "green", "cell", ""),
+        ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell", ""),
+        ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell", ""),
+        ("PRJ-V1", "Version 1", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", ""),
+        ("PRJ-V2", "Version 2", "PH-DEPLOY", "Realize", "2026-06-01", "2026-12-31", "planned", "amber", "rollout", ""),
+        ("PRJ-V3", "Version 3", "PH-APPRAISE", "Deploy", "2027-01-01", "2027-04-30", "planned", "green", "rollout", ""),
     ])
     old_ids = [r["id"] for r in db.execute("SELECT id FROM projects WHERE id LIKE 'PRJ-0%' OR id = 'PRJ-T1'")]
     if old_ids:
@@ -694,6 +694,8 @@ class Handler(BaseHTTPRequestHandler):
                     hours[(e["owner"], e["project_id"])] = e["h"]
                 projects = rows(db.execute("SELECT * FROM projects ORDER BY id"))
                 return self._send(200, {"users": users, "projects": projects, "hours": {f"{k[0]}|{k[1]}": v for k, v in hours.items()}})
+            if path == "/api/org":
+                return self._send(200, rows(db.execute("SELECT * FROM project_org")))
             if path == "/api/wbs":
                 return self._send(200, rows(db.execute("SELECT * FROM wbs ORDER BY project_id, code")))
             if path == "/api/reportmode":
@@ -791,6 +793,15 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(400, {"error": "logo too large (max ~300KB)"})
                 db.execute("INSERT INTO gate_reports (gate_id, logo, logo_name, front_title, front_description) VALUES (?,?,?,?,?) ON CONFLICT(gate_id) DO UPDATE SET logo=excluded.logo, logo_name=excluded.logo_name, front_title=excluded.front_title, front_description=excluded.front_description",
                            (gid, logo, body.get("logo_name", ""), body.get("front_title", ""), body.get("front_description", "")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/org/move":
+                db.execute("INSERT INTO project_org (project_id, username, stream) VALUES (?,?,?) ON CONFLICT(project_id, username) DO UPDATE SET stream=excluded.stream",
+                           (body.get("project_id"), body.get("username"), body.get("stream", "")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/org/remove":
+                db.execute("DELETE FROM project_org WHERE project_id=? AND username=?", (body.get("project_id"), body.get("username")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/wbs/add":
@@ -1018,14 +1029,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True})
             if path == "/api/program/projects/add":
                 pid = f"PRJ-{db.execute('SELECT COUNT(*) c FROM projects').fetchone()['c'] + 1:02d}"
-                db.execute("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?,?)",
+                db.execute("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?,?,?)",
                            (pid, body.get("name"), body.get("program_phase_id"), body.get("sap_phase") or "Discover",
-                            body.get("start_date"), body.get("end_date"), body.get("status") or "planned", body.get("light") or "green", body.get("project_type") or "template"))
+                            body.get("start_date"), body.get("end_date"), body.get("status") or "planned", body.get("light") or "green", body.get("project_type") or "template", body.get("charter_scope", "")))
                 db.commit()
                 return self._send(200, {"ok": True, "id": pid})
             if path == "/api/program/projects/update":
-                db.execute("UPDATE projects SET name=?, program_phase_id=?, sap_phase=?, start_date=?, end_date=?, status=?, light=?, project_type=? WHERE id=?",
-                           (body.get("name"), body.get("program_phase_id"), body.get("sap_phase"), body.get("start_date"), body.get("end_date"), body.get("status"), body.get("light", "green"), body.get("project_type", "template"), body.get("id")))
+                db.execute("UPDATE projects SET name=?, program_phase_id=?, sap_phase=?, start_date=?, end_date=?, status=?, light=?, project_type=?, charter_scope=? WHERE id=?",
+                           (body.get("name"), body.get("program_phase_id"), body.get("sap_phase"), body.get("start_date"), body.get("end_date"), body.get("status"), body.get("light", "green"), body.get("project_type", "template"), body.get("charter_scope", ""), body.get("id")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/program/docrepo":
