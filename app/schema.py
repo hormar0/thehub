@@ -98,7 +98,8 @@ CREATE TABLE IF NOT EXISTS time_entries (
     owner TEXT NOT NULL,
     hours REAL NOT NULL,
     week TEXT NOT NULL,
-    project_id TEXT NOT NULL DEFAULT ''
+    project_id TEXT NOT NULL DEFAULT '',
+    day TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS program_phases (
@@ -438,7 +439,7 @@ def seed(db: sqlite3.Connection):
         ("TE-05", "DEL-005", "S. Lindqvist", 12.5, "2026-W13"),
         ("TE-06", "DEL-006", "L. Moreau", 8.0, "2026-W12"),
     ]
-    cur.executemany("INSERT INTO time_entries VALUES (?,?,?,?,?,?)", [(t[0], t[1], t[2], t[3], t[4], "PRJ-01") for t in time_entries])
+    cur.executemany("INSERT INTO time_entries VALUES (?,?,?,?,?,?,?)", [(t[0], t[1], t[2], t[3], t[4], "PRJ-01", "") for t in time_entries])
 
 
     cur.executemany("INSERT OR REPLACE INTO program_phases VALUES (?,?,?,?,?)", [

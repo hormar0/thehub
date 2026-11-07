@@ -9,7 +9,7 @@ import traceback
 import urllib.request
 import urllib.error
 import zipfile
-from datetime import date
+from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 from xml.etree import ElementTree as ET
@@ -37,6 +37,10 @@ def get_db():
 def init_db():
     db = get_db()
     db.executescript(SCHEMA)
+    # per-day time entries: add day column on existing DBs before seeding
+    tcols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
+    if tcols and "day" not in tcols:
+        db.execute("ALTER TABLE time_entries ADD COLUMN day TEXT NOT NULL DEFAULT ''")
     seed(db)
     seed_columns(db)
     # migrate program phases to the standard five on every start (existing DBs keep old rows otherwise)
@@ -55,8 +59,8 @@ def init_db():
     # allow project-only time entries (deliverable_id nullable) on existing DBs
     cols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
     if cols and "deliverable_id" in cols:
-        db.execute("CREATE TABLE IF NOT EXISTS time_entries_new (id TEXT PRIMARY KEY, deliverable_id TEXT REFERENCES deliverables(id), owner TEXT NOT NULL, hours REAL NOT NULL, week TEXT NOT NULL, project_id TEXT NOT NULL DEFAULT '')")
-        db.execute("INSERT OR IGNORE INTO time_entries_new SELECT id, deliverable_id, owner, hours, week, project_id FROM time_entries")
+        db.execute("CREATE TABLE IF NOT EXISTS time_entries_new (id TEXT PRIMARY KEY, deliverable_id TEXT REFERENCES deliverables(id), owner TEXT NOT NULL, hours REAL NOT NULL, week TEXT NOT NULL, project_id TEXT NOT NULL DEFAULT '', day TEXT NOT NULL DEFAULT '')")
+        db.execute("INSERT OR IGNORE INTO time_entries_new SELECT id, deliverable_id, owner, hours, week, project_id, day FROM time_entries")
         db.execute("DROP TABLE time_entries")
         db.execute("ALTER TABLE time_entries_new RENAME TO time_entries")
     # migrate projects to the rollout/cell set on every start
@@ -1017,7 +1021,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "name": name, "enabled": enabled})
             if path == "/api/timereport/add":
                 tid = f"TE-{db.execute('SELECT COUNT(*) c FROM time_entries').fetchone()['c'] + 1:02d}"
-                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?,?)", (tid, body.get("deliverable_id") or None, body.get("owner"), float(body.get("hours", 0)), body.get("week"), body.get("project_id", "")))
+                day = body.get("day") or ""
+                week = body.get("week") or ""
+                if day and not week:
+                    d0 = datetime.strptime(day, "%Y-%m-%d")
+                    d0 = d0 - timedelta(days=(d0.weekday()))
+                    week = d0.strftime("%Y-%m-%d")
+                db.execute("INSERT INTO time_entries VALUES (?,?,?,?,?,?,?)", (tid, body.get("deliverable_id") or None, body.get("owner"), float(body.get("hours", 0)), week, body.get("project_id", ""), day))
                 db.commit()
                 return self._send(200, {"ok": True, "id": tid})
             if path == "/api/program/phases/add":
