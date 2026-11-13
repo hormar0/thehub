@@ -121,7 +121,12 @@ CREATE TABLE IF NOT EXISTS projects (
     status TEXT NOT NULL DEFAULT 'planned',
     light TEXT NOT NULL DEFAULT 'green',
     project_type TEXT NOT NULL DEFAULT 'template',
-    charter_scope TEXT NOT NULL DEFAULT ''
+    charter_scope TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    quality TEXT NOT NULL DEFAULT 'green',
+    cost TEXT NOT NULL DEFAULT 'green',
+    time_kpi TEXT NOT NULL DEFAULT 'green',
+    pm TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS program_settings (
@@ -496,21 +501,21 @@ def seed(db: sqlite3.Connection):
         ("PH-DISSOLVE", "Dissolution", "2027-04-01", "2027-06-30", 4),
     ])
 
-    cur.executemany("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?,?,?)", [
-        ("PRJ-R1", "Factory China", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", ""),
-        ("PRJ-R2", "Planning Gallin", "PH-ORGANIZE", "Realize", "2026-03-01", "2026-10-30", "active", "amber", "rollout", ""),
-        ("PRJ-R3", "Market Western Europe", "PH-DEPLOY", "Deploy", "2026-07-01", "2026-12-31", "planned", "green", "rollout", ""),
-        ("PRJ-R4", "Version 2 North America", "PH-DEPLOY", "Deploy", "2026-09-01", "2027-02-28", "planned", "amber", "rollout", ""),
-        ("PRJ-C1", "Data Migration", "PH-ORGANIZE", "Realize", "2026-02-15", "2026-06-30", "active", "green", "cell", ""),
-        ("PRJ-C2", "Testing", "PH-DEPLOY", "Realize", "2026-06-01", "2026-11-30", "planned", "amber", "cell", ""),
-        ("PRJ-C3", "Cut over", "PH-DEPLOY", "Deploy", "2026-11-01", "2027-01-31", "planned", "red", "cell", ""),
-        ("PRJ-C4", "Hypercare", "PH-APPRAISE", "Deploy", "2027-02-01", "2027-03-31", "planned", "green", "cell", ""),
-        ("PRJ-C5", "Authorization", "PH-ORGANIZE", "Explore", "2026-03-01", "2026-07-31", "planned", "green", "cell", ""),
-        ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell", ""),
-        ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell", ""),
-        ("PRJ-V1", "Version 1", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", ""),
-        ("PRJ-V2", "Version 2", "PH-DEPLOY", "Realize", "2026-06-01", "2026-12-31", "planned", "amber", "rollout", ""),
-        ("PRJ-V3", "Version 3", "PH-APPRAISE", "Deploy", "2027-01-01", "2027-04-30", "planned", "green", "rollout", ""),
+    cur.executemany("INSERT INTO projects (id, name, program_phase_id, sap_phase, start_date, end_date, status, light, project_type, charter_scope, description, quality, cost, time_kpi, pm) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+        ("PRJ-R1", "Factory China", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", "", "", "green", "green", "green", ""),
+        ("PRJ-R2", "Planning Gallin", "PH-ORGANIZE", "Realize", "2026-03-01", "2026-10-30", "active", "amber", "rollout", "", "", "green", "green", "green", ""),
+        ("PRJ-R3", "Market Western Europe", "PH-DEPLOY", "Deploy", "2026-07-01", "2026-12-31", "planned", "green", "rollout", "", "", "green", "green", "green", ""),
+        ("PRJ-R4", "Version 2 North America", "PH-DEPLOY", "Deploy", "2026-09-01", "2027-02-28", "planned", "amber", "rollout", "", "", "green", "green", "green", ""),
+        ("PRJ-C1", "Data Migration", "PH-ORGANIZE", "Realize", "2026-02-15", "2026-06-30", "active", "green", "cell", "", "", "green", "green", "green", ""),
+        ("PRJ-C2", "Testing", "PH-DEPLOY", "Realize", "2026-06-01", "2026-11-30", "planned", "amber", "cell", "", "", "green", "green", "green", ""),
+        ("PRJ-C3", "Cut over", "PH-DEPLOY", "Deploy", "2026-11-01", "2027-01-31", "planned", "red", "cell", "", "", "green", "green", "green", ""),
+        ("PRJ-C4", "Hypercare", "PH-APPRAISE", "Deploy", "2027-02-01", "2027-03-31", "planned", "green", "cell", "", "", "green", "green", "green", ""),
+        ("PRJ-C5", "Authorization", "PH-ORGANIZE", "Explore", "2026-03-01", "2026-07-31", "planned", "green", "cell", "", "", "green", "green", "green", ""),
+        ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell", "", "", "green", "green", "green", ""),
+        ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell", "", "", "green", "green", "green", ""),
+        ("PRJ-V1", "Version 1", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", "", "", "green", "green", "green", ""),
+        ("PRJ-V2", "Version 2", "PH-DEPLOY", "Realize", "2026-06-01", "2026-12-31", "planned", "amber", "rollout", "", "", "green", "green", "green", ""),
+        ("PRJ-V3", "Version 3", "PH-APPRAISE", "Deploy", "2027-01-01", "2027-04-30", "planned", "green", "rollout", "", "", "green", "green", "green", "")
     ])
 
     cur.execute("INSERT INTO doc_repo VALUES (1, 'teams', '', 0)")
