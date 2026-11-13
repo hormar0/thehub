@@ -502,7 +502,8 @@ async function renderProjects() {
 }
 async function openProject(id) { currentProject = id; currentView = 'project'; render(); }
 async function renderProject() {
-  const [progs, dels, wbs, t, gates] = await Promise.all([api('/program'), api('/deliverables'), api('/wbs'), api('/timereport'), api('/gates')]);
+  const [progs, dels, wbs, t, gates, users] = await Promise.all([api('/program'), api('/deliverables'), api('/wbs'), api('/timereport'), api('/gates'), api('/users')]);
+  window._users = users;
   const p = progs.projects.find(x => x.id === currentProject);
   if (!p) { currentView = 'projects'; return render(); }
   const pd = dels.filter(d => d.project_id === p.id);
@@ -528,7 +529,7 @@ async function renderProject() {
       <label class="small muted" style="margin-top:10px;display:block">Description</label>
       <input id="charterDesc" style="width:100%" placeholder="Short description…" value="${esc(p.description || '')}">
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">
-        <span><label class="small muted">Project manager</label><input id="charterPm" style="width:160px" value="${esc(p.pm || '')}"></span>
+        <span><label class="small muted">Project manager</label><select id="charterPm" style="width:180px"><option value="">— none —</option>${(window._users || []).map(u => `<option value="${esc(u.username)}" ${p.pm === u.username ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select></span>
         <span><label class="small muted">Time</label><select id="kpiTime">${['green','amber','red'].map(v => `<option ${p.time_kpi === v ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
         <span><label class="small muted">Quality</label><select id="kpiQuality">${['green','amber','red'].map(v => `<option ${p.quality === v ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
         <span><label class="small muted">Cost</label><select id="kpiCost">${['green','amber','red'].map(v => `<option ${p.cost === v ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
