@@ -1258,10 +1258,10 @@ async function renderTimeReport() {
   const progs = await api('/program');
   const setts = await api('/settings');
   const budget = parseFloat((setts.program_settings || []).find(s => s.key === 'time_budget_monthly_hours')?.value || 0) || 0;
+  const owner = window._tsOwner || window._chatUser || 'A. Reinhart';
   const monthPrefix = new Date().toISOString().slice(0, 7);
   let monthMin = 0;
   t.entries.forEach(e => { if ((e.day || e.week || '').startsWith(monthPrefix) && e.owner === owner) monthMin += e.hours * 60; });
-  const owner = window._tsOwner || window._chatUser || 'A. Reinhart';
   const view = window._tsView || 'week';
   const now = new Date();
   const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + (window._tsWeekOff || 0) * 7);
