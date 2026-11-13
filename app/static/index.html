@@ -485,13 +485,13 @@ async function renderProjects() {
     <div class="sub">One swimlane per project · click a row for the project charter</div>
     <div style="overflow-x:auto">
     <table style="min-width:1100px;border-collapse:separate;border-spacing:0 8px">
-      <tr class="muted small"><th style="text-align:left">Project</th><th>Description</th><th>Completion</th><th>RAG</th><th>Time</th><th>Quality</th><th>Cost</th><th>Start</th><th>End</th><th>PM</th></tr>
+      <tr class="muted small"><th style="text-align:left">Project</th><th>Description</th><th>Completion</th><th>RAG</th><th>Time</th><th>Quality</th><th>Cost</th><th>Trend</th><th>Start</th><th>End</th><th>PM</th></tr>
       ${projects.map(p => `
       <tr style="background:rgba(255,255,255,.04);cursor:pointer" onclick="openProject('${p.id}')">
         <td style="padding:10px;border-radius:8px 0 0 8px"><div style="display:flex;align-items:center;gap:8px"><span class="tl tl-${esc(p.light)} tl-lg"></span><div><div style="font-weight:700">${esc(p.name)}</div><div class="small muted">${esc(p.project_type)}</div></div></div></td>
         <td class="small" style="max-width:220px">${esc(p.description || '—')}</td>
         <td style="min-width:120px"><div class="bar" style="height:10px"><div style="width:${comp[p.id]}%"></div></div><span class="small">${comp[p.id]}%</span></td>
-        <td>${kpi(p.light)}</td><td>${kpi(p.time_kpi)}</td><td>${kpi(p.quality)}</td><td>${kpi(p.cost)}</td>
+        <td>${kpi(p.light)}</td><td>${kpi(p.time_kpi)}</td><td>${kpi(p.quality)}</td><td>${kpi(p.cost)}</td><td style="font-size:15px">${p.trend === 'up' ? '▲' : p.trend === 'down' ? '▼' : '▶'}</td>
         <td class="small">${esc(p.start_date)}</td><td class="small">${esc(p.end_date)}</td>
         <td class="small" style="border-radius:0 8px 8px 0">${esc(p.pm || '—')}</td>
       </tr>`).join('')}
@@ -530,6 +530,7 @@ async function renderProject() {
         <span><label class="small muted">Time</label><select id="kpiTime">${['green','amber','red'].map(v => `<option ${p.time_kpi === v ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
         <span><label class="small muted">Quality</label><select id="kpiQuality">${['green','amber','red'].map(v => `<option ${p.quality === v ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
         <span><label class="small muted">Cost</label><select id="kpiCost">${['green','amber','red'].map(v => `<option ${p.cost === v ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
+        <span><label class="small muted">Trend</label><select id="kpiTrend">${[['up','▲ up'],['stable','▶ stable'],['down','▼ down']].map(([v,l]) => `<option value="${v}" ${p.trend === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span>
       </div>
       <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
         <button class="btn" onclick="saveCharter()">Save</button>
@@ -564,7 +565,7 @@ async function renderProject() {
 
 async function saveCharter() {
   const p = (await api('/program')).projects.find(x => x.id === currentProject);
-  await api('/program/projects/update', 'POST', { id: p.id, name: p.name, program_phase_id: p.program_phase_id, sap_phase: p.sap_phase, start_date: p.start_date, end_date: p.end_date, status: p.status, light: p.light, project_type: p.project_type, charter_scope: document.getElementById('charterScope').value, description: document.getElementById('charterDesc').value, pm: document.getElementById('charterPm').value, quality: document.getElementById('kpiQuality').value, cost: document.getElementById('kpiCost').value, time_kpi: document.getElementById('kpiTime').value });
+  await api('/program/projects/update', 'POST', { id: p.id, name: p.name, program_phase_id: p.program_phase_id, sap_phase: p.sap_phase, start_date: p.start_date, end_date: p.end_date, status: p.status, light: p.light, project_type: p.project_type, charter_scope: document.getElementById('charterScope').value, description: document.getElementById('charterDesc').value, pm: document.getElementById('charterPm').value, quality: document.getElementById('kpiQuality').value, cost: document.getElementById('kpiCost').value, time_kpi: document.getElementById('kpiTime').value, trend: document.getElementById('kpiTrend').value });
   document.getElementById('charterStatus').textContent = 'Saved.';
 }
 async function renderOrgChart(pid) {

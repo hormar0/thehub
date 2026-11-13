@@ -50,6 +50,9 @@ def init_db():
     for col in ["description", "quality", "cost", "time_kpi", "pm"]:
         if col not in pcols2:
             db.execute(f"ALTER TABLE projects ADD COLUMN {col} TEXT NOT NULL DEFAULT {'green' if col in ('quality','cost','time_kpi') else chr(39)+chr(39)}")
+    pcols3 = [r[1] for r in db.execute("PRAGMA table_info(projects)")]
+    if "trend" not in pcols3:
+        db.execute("ALTER TABLE projects ADD COLUMN trend TEXT NOT NULL DEFAULT 'stable'")
     db.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '')")
     db.execute("CREATE TABLE IF NOT EXISTS week_status (owner TEXT NOT NULL, week TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft', PRIMARY KEY (owner, week))")
     # per-day time entries: add day column on existing DBs before seeding
@@ -80,19 +83,19 @@ def init_db():
         db.execute("ALTER TABLE time_entries_new RENAME TO time_entries")
     # migrate projects to the rollout/cell set on every start
     db.executemany("INSERT OR REPLACE INTO projects (id, name, program_phase_id, sap_phase, start_date, end_date, status, light, project_type, charter_scope, description, quality, cost, time_kpi, pm) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
-        ("PRJ-R1", "Factory China", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", "", "", "green", "green", "green", ""),
-        ("PRJ-R2", "Planning Gallin", "PH-ORGANIZE", "Realize", "2026-03-01", "2026-10-30", "active", "amber", "rollout", "", "", "green", "green", "green", ""),
-        ("PRJ-R3", "Market Western Europe", "PH-DEPLOY", "Deploy", "2026-07-01", "2026-12-31", "planned", "green", "rollout", "", "", "green", "green", "green", ""),
-        ("PRJ-R4", "Version 2 North America", "PH-DEPLOY", "Deploy", "2026-09-01", "2027-02-28", "planned", "amber", "rollout", "", "", "green", "green", "green", ""),
-        ("PRJ-C1", "Data Migration", "PH-ORGANIZE", "Realize", "2026-02-15", "2026-06-30", "active", "green", "cell", "", "", "green", "green", "green", ""),
-        ("PRJ-C2", "Testing", "PH-DEPLOY", "Realize", "2026-06-01", "2026-11-30", "planned", "amber", "cell", "", "", "green", "green", "green", ""),
-        ("PRJ-C3", "Cut over", "PH-DEPLOY", "Deploy", "2026-11-01", "2027-01-31", "planned", "red", "cell", "", "", "green", "green", "green", ""),
-        ("PRJ-C4", "Hypercare", "PH-APPRAISE", "Deploy", "2027-02-01", "2027-03-31", "planned", "green", "cell", "", "", "green", "green", "green", ""),
-        ("PRJ-C5", "Authorization", "PH-ORGANIZE", "Explore", "2026-03-01", "2026-07-31", "planned", "green", "cell", "", "", "green", "green", "green", ""),
-        ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell", "", "", "green", "green", "green", ""),
-        ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell", "", "", "green", "green", "green", ""),
-        ("PRJ-V1", "Version 1", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", "", "", "green", "green", "green", ""),
-        ("PRJ-V2", "Version 2", "PH-DEPLOY", "Realize", "2026-06-01", "2026-12-31", "planned", "amber", "rollout", "", "", "green", "green", "green", ""),
+        ("PRJ-R1", "Factory China", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-R2", "Planning Gallin", "PH-ORGANIZE", "Realize", "2026-03-01", "2026-10-30", "active", "amber", "rollout", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-R3", "Market Western Europe", "PH-DEPLOY", "Deploy", "2026-07-01", "2026-12-31", "planned", "green", "rollout", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-R4", "Version 2 North America", "PH-DEPLOY", "Deploy", "2026-09-01", "2027-02-28", "planned", "amber", "rollout", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-C1", "Data Migration", "PH-ORGANIZE", "Realize", "2026-02-15", "2026-06-30", "active", "green", "cell", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-C2", "Testing", "PH-DEPLOY", "Realize", "2026-06-01", "2026-11-30", "planned", "amber", "cell", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-C3", "Cut over", "PH-DEPLOY", "Deploy", "2026-11-01", "2027-01-31", "planned", "red", "cell", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-C4", "Hypercare", "PH-APPRAISE", "Deploy", "2027-02-01", "2027-03-31", "planned", "green", "cell", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-C5", "Authorization", "PH-ORGANIZE", "Explore", "2026-03-01", "2026-07-31", "planned", "green", "cell", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-C6", "Training", "PH-DEPLOY", "Realize", "2026-08-01", "2026-12-15", "planned", "green", "cell", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-C7", "Business Realizing", "PH-DEPLOY", "Realize", "2026-07-15", "2026-12-31", "planned", "amber", "cell", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-V1", "Version 1", "PH-FORMULATE", "Explore", "2026-02-01", "2026-08-31", "active", "green", "rollout", "", "", "green", "green", "green", "", "stable"),
+        ("PRJ-V2", "Version 2", "PH-DEPLOY", "Realize", "2026-06-01", "2026-12-31", "planned", "amber", "rollout", "", "", "green", "green", "green", "", "stable"),
         ("PRJ-V3", "Version 3", "PH-APPRAISE", "Deploy", "2027-01-01", "2027-04-30", "planned", "green", "rollout", "", "", "green", "green", "green", "")
     ])
     old_ids = [r["id"] for r in db.execute("SELECT id FROM projects WHERE id LIKE 'PRJ-0%' OR id = 'PRJ-T1'")]
@@ -1113,12 +1116,12 @@ class Handler(BaseHTTPRequestHandler):
                 pid = f"PRJ-{db.execute('SELECT COUNT(*) c FROM projects').fetchone()['c'] + 1:02d}"
                 db.execute("INSERT INTO projects VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                            (pid, body.get("name"), body.get("program_phase_id"), body.get("sap_phase") or "Discover",
-                            body.get("start_date"), body.get("end_date"), body.get("status") or "planned", body.get("light") or "green", body.get("project_type") or "template", body.get("charter_scope", ""), body.get("description", ""), body.get("quality", "green"), body.get("cost", "green"), body.get("time_kpi", "green"), body.get("pm", "")))
+                            body.get("start_date"), body.get("end_date"), body.get("status") or "planned", body.get("light") or "green", body.get("project_type") or "template", body.get("charter_scope", ""), body.get("description", ""), body.get("quality", "green"), body.get("cost", "green"), body.get("time_kpi", "green"), body.get("pm", ""), body.get("trend", "stable")))
                 db.commit()
                 return self._send(200, {"ok": True, "id": pid})
             if path == "/api/program/projects/update":
-                db.execute("UPDATE projects SET name=?, program_phase_id=?, sap_phase=?, start_date=?, end_date=?, status=?, light=?, project_type=?, charter_scope=?, description=?, quality=?, cost=?, time_kpi=?, pm=? WHERE id=?",
-                           (body.get("name"), body.get("program_phase_id"), body.get("sap_phase"), body.get("start_date"), body.get("end_date"), body.get("status"), body.get("light", "green"), body.get("project_type", "template"), body.get("charter_scope", ""), body.get("description", ""), body.get("quality", "green"), body.get("cost", "green"), body.get("time_kpi", "green"), body.get("pm", ""), body.get("id")))
+                db.execute("UPDATE projects SET name=?, program_phase_id=?, sap_phase=?, start_date=?, end_date=?, status=?, light=?, project_type=?, charter_scope=?, description=?, quality=?, cost=?, time_kpi=?, pm=?, trend=? WHERE id=?",
+                           (body.get("name"), body.get("program_phase_id"), body.get("sap_phase"), body.get("start_date"), body.get("end_date"), body.get("status"), body.get("light", "green"), body.get("project_type", "template"), body.get("charter_scope", ""), body.get("description", ""), body.get("quality", "green"), body.get("cost", "green"), body.get("time_kpi", "green"), body.get("pm", ""), body.get("trend", "stable"), body.get("id")))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/program/docrepo":
