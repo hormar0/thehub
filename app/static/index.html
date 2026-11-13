@@ -596,10 +596,17 @@ async function renderOrgChart(pid) {
     let lines = '';
     if (pmBox) {
       const [px, py] = center(pmBox);
-      boxes.filter(b => b !== pmBox).forEach(b => {
-        const [x, y] = center(b);
-        lines += `<line x1="${px}" y1="${py}" x2="${x}" y2="${y}" stroke="rgba(200,215,255,.45)" stroke-width="1.5"/>`;
-      });
+      const busY = py + 24;
+      lines += `<line x1="${px}" y1="${py}" x2="${px}" y2="${busY}" stroke="rgba(200,215,255,.5)" stroke-width="1.5"/>`;
+      const others = boxes.filter(b => b !== pmBox);
+      if (others.length) {
+        const minX = Math.min(...others.map(b => center(b)[0])), maxX = Math.max(...others.map(b => center(b)[0]));
+        lines += `<line x1="${minX}" y1="${busY}" x2="${maxX}" y2="${busY}" stroke="rgba(200,215,255,.5)" stroke-width="1.5"/>`;
+        others.forEach(b => {
+          const [x, y] = center(b);
+          lines += `<line x1="${x}" y1="${busY}" x2="${x}" y2="${y}" stroke="rgba(200,215,255,.5)" stroke-width="1.5"/>`;
+        });
+      }
     }
     svg.innerHTML = lines;
   };
@@ -1052,10 +1059,20 @@ async function renderRoadmap() {
       <div style="min-width:900px">
         <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;margin-bottom:6px">
           <div></div>
-          <div style="position:relative;height:44px">
-            ${phases.map(p => `<div class="gbar gphase" data-phid="${esc(p.id)}" data-start="${esc(p.start_date)}" data-end="${esc(p.end_date)}" title="${esc(p.name)} — drag to move, drag right edge to extend" style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(4, pct(p.end_date) - pct(p.start_date))}%;top:0;height:100%;background:linear-gradient(90deg,rgba(110,168,255,.22),rgba(207,169,255,.14));border:1px solid rgba(140,175,255,.35);border-radius:8px;padding:4px 6px;cursor:grab">
+          <div style="position:relative;height:52px">
+            ${(() => {
+              const ticks = [];
+              const d0 = new Date(pmin), d1 = new Date(pmax);
+              const cur = new Date(d0.getFullYear(), d0.getMonth(), 1);
+              while (cur <= d1) {
+                ticks.push(`<div style="position:absolute;left:${pct(cur.toISOString().slice(0,10))}%;top:34px;bottom:0;width:1px;background:rgba(255,255,255,.18)"></div>
+                  <div class="muted" style="position:absolute;left:${pct(cur.toISOString().slice(0,10))}%;top:38px;transform:translateX(2px);font-size:9.5px">${cur.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}</div>`);
+                cur.setMonth(cur.getMonth() + 1);
+              }
+              return ticks.join('');
+            })()}
+            ${phases.map(p => `<div class="gbar gphase" data-phid="${esc(p.id)}" data-start="${esc(p.start_date)}" data-end="${esc(p.end_date)}" title="${esc(p.name)} — drag to move, drag right edge to extend" style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(4, pct(p.end_date) - pct(p.start_date))}%;top:0;height:30px;background:linear-gradient(90deg,rgba(110,168,255,.22),rgba(207,169,255,.14));border:1px solid rgba(140,175,255,.35);border-radius:8px;padding:4px 6px;cursor:grab">
               <div class="small" style="font-weight:700">${esc(p.name)}</div>
-              <div class="muted" style="font-size:10.5px">${esc(p.start_date)} → ${esc(p.end_date)}</div>
               <div class="gresize" style="position:absolute;right:-4px;top:0;width:8px;height:100%;cursor:ew-resize;border-radius:3px;background:rgba(255,255,255,.4)"></div>
             </div>`).join('')}
           </div>
