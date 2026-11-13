@@ -1,0 +1,2012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Hub</title>
+<style>
+  :root {
+    --text: #f2f5fa; --muted: rgba(235, 242, 255, .58);
+    --glass: rgba(255, 255, 255, .07);
+    --glass-strong: rgba(255, 255, 255, .11);
+    --glass-border: rgba(255, 255, 255, .16);
+    --glass-highlight: rgba(255, 255, 255, .22);
+    --accent: #6ea8ff;
+    --green: #5ee38a; --amber: #ffcf6e; --red: #ff7d78; --purple: #cfa9ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: "Inter", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(1100px 700px at 12% -10%, rgba(110, 140, 255, .32), transparent 60%),
+      radial-gradient(900px 650px at 88% 8%, rgba(160, 90, 255, .28), transparent 55%),
+      radial-gradient(1000px 800px at 50% 115%, rgba(60, 200, 190, .22), transparent 60%),
+      radial-gradient(700px 500px at 70% 55%, rgba(255, 120, 170, .14), transparent 60%),
+      #0a0e1a;
+    background-attachment: fixed;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 0 18px; height: 46px;
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(14, 18, 32, .42);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight);
+    backdrop-filter: blur(28px) saturate(170%);
+    -webkit-backdrop-filter: blur(28px) saturate(170%);
+  }
+  header .logo { font-weight: 700; font-size: 15px; letter-spacing: .2px; text-shadow: 0 1px 8px rgba(110,168,255,.35); }
+  header .logo span { background: linear-gradient(90deg, #8ab8ff, #cfa9ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  nav { display: flex; gap: 3px; margin-left: 10px; }
+  nav button {
+    background: transparent; border: 1px solid transparent; color: var(--muted);
+    padding: 6px 9px; border-radius: 8px; cursor: pointer; font-size: 12.5px;
+    transition: all .18s ease;
+  }
+  nav button:hover { color: var(--text); background: rgba(255,255,255,.06); }
+  nav button.active {
+    color: var(--text);
+    background: linear-gradient(160deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+    border-color: var(--glass-border);
+    box-shadow: 0 4px 14px rgba(0,0,0,.25), inset 0 1px 0 var(--glass-highlight);
+  }
+  main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+  h2 { font-size: 20px; margin-bottom: 4px; letter-spacing: .2px; text-shadow: 0 1px 10px rgba(0,0,0,.4); }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  .grid { display: grid; gap: 16px; }
+  .cards { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .card {
+    background: linear-gradient(160deg, var(--glass-strong), var(--glass) 55%, rgba(255,255,255,.04));
+    border: 1px solid var(--glass-border); border-radius: 16px; padding: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-highlight);
+    backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
+  }
+  .card .kpi { font-size: 28px; font-weight: 700; background: linear-gradient(90deg, #fff, #bcd4ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .card .lbl { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+  .panel {
+    background: linear-gradient(160deg, var(--glass-strong), var(--glass) 55%, rgba(255,255,255,.04));
+    border: 1px solid var(--glass-border); border-radius: 16px; padding: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-highlight);
+    backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
+  }
+  .panel h3 { font-size: 15px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; padding: 8px 10px; border-bottom: 1px solid var(--glass-border); }
+  td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.07); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .p-green { background: rgba(94,227,138,.14); color: var(--green); border-color: rgba(94,227,138,.35); }
+  .p-amber { background: rgba(255,207,110,.14); color: var(--amber); border-color: rgba(255,207,110,.35); }
+  .p-red { background: rgba(255,125,120,.14); color: var(--red); border-color: rgba(255,125,120,.35); }
+  .p-purple { background: rgba(207,169,255,.14); color: var(--purple); border-color: rgba(207,169,255,.35); }
+  .p-gray { background: rgba(255,255,255,.08); color: var(--muted); border-color: var(--glass-border); }
+  .bar { height: 9px; background: rgba(255,255,255,.09); border-radius: 999px; overflow: hidden; min-width: 90px; box-shadow: inset 0 1px 3px rgba(0,0,0,.4); }
+  .bar > div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #6ea8ff, #cfa9ff); box-shadow: 0 0 10px rgba(140,160,255,.55); }
+  .att { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.07); font-size: 13.5px; align-items: baseline; }
+  .att:last-child { border-bottom: none; }
+  .att::before { content: "▸"; color: var(--red); text-shadow: 0 0 8px rgba(255,125,120,.6); }
+  .gate-rail { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+  .gate-node {
+    flex: 1; min-width: 130px; border-radius: 14px; padding: 12px;
+    background: linear-gradient(160deg, var(--glass-strong), var(--glass));
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 24px rgba(0,0,0,.3), inset 0 1px 0 var(--glass-highlight);
+    backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%);
+  }
+  .gate-node.current { border-color: rgba(140,175,255,.65); box-shadow: 0 0 0 1px rgba(140,175,255,.5), 0 0 24px rgba(110,168,255,.35), inset 0 1px 0 var(--glass-highlight); }
+  .gate-node .gid { font-weight: 700; font-size: 13px; }
+  .gate-node .gname { color: var(--muted); font-size: 12px; margin: 4px 0 8px; min-height: 28px; }
+  .gate-node .gdate { font-size: 12px; color: var(--muted); }
+  .two-col { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+  .btn {
+    background: linear-gradient(160deg, rgba(140,175,255,.85), rgba(110,140,255,.75));
+    color: #fff; border: 1px solid rgba(255,255,255,.35); padding: 7px 14px; border-radius: 10px;
+    cursor: pointer; font-size: 13px; font-weight: 600;
+    box-shadow: 0 6px 18px rgba(110,140,255,.35), inset 0 1px 0 rgba(255,255,255,.4);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 9px 22px rgba(110,140,255,.45), inset 0 1px 0 rgba(255,255,255,.5); }
+  .btn.ghost {
+    background: linear-gradient(160deg, rgba(255,255,255,.13), rgba(255,255,255,.05));
+    color: var(--text); border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 14px rgba(0,0,0,.25), inset 0 1px 0 var(--glass-highlight);
+  }
+  select, input, textarea {
+    background: rgba(10, 14, 26, .45); border: 1px solid var(--glass-border); color: var(--text);
+    border-radius: 9px; padding: 6px 8px; font-size: 13px;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.35);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  select:focus, input:focus, textarea:focus { outline: 1px solid rgba(140,175,255,.6); }
+  .modal-bg { position: fixed; inset: 0; background: rgba(5, 8, 16, .55); display: none; align-items: center; justify-content: center; z-index: 20; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .modal-bg.open { display: flex; }
+  .modal {
+    border-radius: 20px; padding: 22px; width: 440px; max-width: 92vw;
+    background: linear-gradient(165deg, rgba(52, 62, 92, .72), rgba(22, 28, 48, .78));
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 24px 70px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);
+    backdrop-filter: blur(36px) saturate(170%); -webkit-backdrop-filter: blur(36px) saturate(170%);
+  }
+  .modal h3 { margin-bottom: 14px; }
+  .modal label { display: block; color: var(--muted); font-size: 12.5px; margin: 10px 0 4px; }
+  .modal input, .modal select, .modal textarea { width: 100%; }
+  .modal .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+  .brief { font-size: 14px; line-height: 1.65; }
+  .brief h4 { margin: 16px 0 6px; font-size: 14px; background: linear-gradient(90deg, #8ab8ff, #cfa9ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .brief li { margin-left: 18px; margin-bottom: 4px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .kanban { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: start; }
+  .kb-col {
+    border-radius: 16px; padding: 12px; min-height: 200px;
+    background: linear-gradient(170deg, rgba(255,255,255,.09), rgba(255,255,255,.035));
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 26px rgba(0,0,0,.3), inset 0 1px 0 var(--glass-highlight);
+    backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%);
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .kb-col.drag-over { border-color: rgba(140,175,255,.7); box-shadow: 0 0 0 1px rgba(140,175,255,.5), 0 0 26px rgba(110,168,255,.4); }
+  .kb-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; font-weight: 700; }
+  .kb-count { background: rgba(255,255,255,.1); border: 1px solid var(--glass-border); border-radius: 999px; padding: 1px 9px; font-size: 12px; color: var(--muted); }
+  .kb-card {
+    border-radius: 12px; padding: 10px; margin-bottom: 8px; cursor: grab; font-size: 13px;
+    background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 5px 16px rgba(0,0,0,.28), inset 0 1px 0 var(--glass-highlight);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .kb-card:hover { transform: translateY(-2px); box-shadow: 0 9px 22px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-highlight); }
+  .kb-card.dragging { opacity: .35; }
+  .kb-card .kb-id { color: var(--muted); font-size: 11px; font-weight: 700; }
+  .kb-card .kb-title { margin: 3px 0 6px; line-height: 1.35; }
+  .kb-meta { display: flex; justify-content: space-between; gap: 6px; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
+  .kb-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 2px 5px; border-radius: 6px; }
+  .kb-del:hover { color: var(--red); background: rgba(255,125,120,.14); }
+  .rowmenu .menu-item { display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px; }
+  .rowmenu .menu-item:hover { background: rgba(255,255,255,.1); }
+  .tl { display:inline-block; width:14px; height:14px; border-radius:50%; cursor:pointer; border:2px solid rgba(255,255,255,.25); }
+  .tl-green { background:#3fb950; box-shadow:0 0 8px rgba(63,185,80,.8); }
+  .tl-amber { background:#d29922; box-shadow:0 0 8px rgba(210,153,34,.8); }
+  .tl-red { background:#f85149; box-shadow:0 0 8px rgba(248,81,73,.8); }
+  .tl-lg { width:20px; height:20px; }
+  .rag-green { border-color: rgba(63,185,80,.75); box-shadow: 0 0 18px rgba(63,185,80,.28), 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-highlight); }
+  .rag-amber { border-color: rgba(210,153,34,.75); box-shadow: 0 0 18px rgba(210,153,34,.28), 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-highlight); }
+  .rag-red { border-color: rgba(248,81,73,.8); box-shadow: 0 0 18px rgba(248,81,73,.32), 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-highlight); }
+  .gbar { touch-action: none; }
+
+  /* Tablet landscape (e.g. 1024x768 … 1366x768) */
+  @media (min-width: 768px) and (max-width: 1366px) and (orientation: landscape) {
+    header { height: 44px; padding: 0 12px; gap: 8px; }
+    nav { overflow-x: auto; scrollbar-width: none; flex: 1; }
+    nav::-webkit-scrollbar { display: none; }
+    nav button { white-space: nowrap; padding: 5px 8px; font-size: 12px; }
+    main { padding: 14px; max-width: 100%; }
+    .cards { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+    .card { padding: 12px; }
+    .card .kpi { font-size: 22px; }
+    .panel { padding: 14px; }
+    .gate-rail { gap: 8px; }
+    .gate-node { min-width: 150px; }
+    .two-col { grid-template-columns: 1fr 1fr; gap: 12px; }
+    table { font-size: 12.5px; }
+    td, th { padding: 7px 8px; }
+    .panel table { display: block; overflow-x: auto; }
+    h2 { font-size: 18px; }
+  }
+  /* Small tablets / portrait */
+  @media (max-width: 820px) {
+    header { flex-wrap: wrap; height: auto; padding: 8px 12px; }
+    nav { order: 3; width: 100%; overflow-x: auto; }
+    main { padding: 12px; }
+    .two-col { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <button id="hamburger" title="Menu" style="background:transparent;border:1px solid var(--glass-border);color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:15px;line-height:1">☰</button>
+  <div class="logo" style="margin-left:auto;cursor:pointer" onclick="currentView='home';render()" title="Home">The<span>Hub</span></div>
+  <nav id="nav"></nav>
+  <div id="menu" style="display:none;position:absolute;top:44px;left:10px;background:linear-gradient(165deg, rgba(52,62,92,.85), rgba(22,28,48,.9));border:1px solid var(--glass-border);border-radius:14px;padding:8px;min-width:240px;max-height:70vh;overflow-y:auto;box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%);z-index:30"></div>
+</header>
+<main id="app"></main>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<script>
+async function reportClientError(level, source, message, detail) {
+  try { await fetch('/api/errors/log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ level, source, message, detail }) }); } catch (e) {}
+}
+window.addEventListener('error', e => reportClientError('ERROR', 'window', e.message, (e.filename || '') + ':' + (e.lineno || '')));
+window.addEventListener('unhandledrejection', e => reportClientError('ERROR', 'unhandledrejection', String(e.reason && e.reason.message || e.reason), ''));
+const _origFetch = window.fetch;
+window.fetch = async function(...args) {
+  try {
+    const res = await _origFetch(...args);
+    if (!res.ok) reportClientError('WARN', 'fetch ' + args[0], 'HTTP ' + res.status, '');
+    return res;
+  } catch (e) {
+    reportClientError('ERROR', 'fetch ' + args[0], e.message, '');
+    throw e;
+  }
+};
+let app = document.getElementById('app');
+let currentView = 'dashboard';
+let subView = 'register';
+let moduleMap = {};
+let settingsTab = 'store';
+async function api(path, method = 'GET', body = null) {
+  const res = await fetch('/api' + path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : null });
+  return res.json();
+}
+function pill(text, cls) { return `<span class="pill ${cls}">${esc(text)}</span>`; }
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function statePill(s) {
+  const map = { verified: ['Verified','p-green'], in_review: ['In review','p-purple'], in_progress: ['In progress','p-amber'], blocked: ['Blocked','p-red'], not_started: ['Not started','p-gray'] };
+  const [t, c] = map[s] || [s, 'p-gray']; return pill(t, c);
+}
+function gatePill(s) {
+  const map = { passed: ['Passed','p-green'], passed_with_conditions: ['Passed w/ conditions','p-amber'], failed: ['Failed','p-red'], held: ['Held','p-purple'], in_progress: ['In progress','p-amber'], upcoming: ['Upcoming','p-gray'] };
+  const [t, c] = map[s] || [s, 'p-gray']; return pill(t, c);
+}
+function sevPill(s) {
+  const map = { very_high: ['Very High','p-red'], high: ['High','p-red'], medium: ['Medium','p-amber'], low: ['Low','p-gray'] };
+  const [t, c] = map[s] || [s, 'p-gray']; return pill(t, c);
+}
+function evPill(s) {
+  const map = { present: ['Present','p-green'], partial: ['Partial','p-amber'], missing: ['Missing','p-red'] };
+  const [t, c] = map[s] || [s, 'p-gray']; return pill(t, c);
+}
+function condPill(s) {
+  const map = { open: ['Open','p-amber'], met: ['Met','p-green'], expired: ['Expired','p-red'] };
+  const [t, c] = map[s] || [s, 'p-gray']; return pill(t, c);
+}
+async function loadModules() {
+  const mods = await api('/modules');
+  moduleMap = Object.fromEntries(mods.map(m => [m.name, m]));
+  const viewFor = {}; document.querySelectorAll('#nav button').forEach(() => {});
+  document.querySelectorAll('#nav button').forEach(b => {
+    const mod = Object.keys(viewFor).find(k => viewFor[k] === b.dataset.view);
+    if (mod) b.style.display = moduleMap[mod] && moduleMap[mod].enabled ? '' : 'none';
+  });
+}
+const ALL_VIEWS = [
+  { id: 'program', label: 'Program', icon: '▦' },
+  { id: 'projects', label: 'Projects', icon: '▤' },
+  { id: 'gates', label: 'Gates', icon: '◆' },
+  { id: 'risks', label: 'Risks', icon: '⚠' },
+  { id: 'time', label: 'Time', icon: '⏱' },
+  { id: 'readiness', label: 'Readiness', icon: '◎' },
+  { id: 'work', label: 'Work', icon: '✎' },
+  { id: 'planning', label: 'Planning', icon: '🗓' },
+  { id: 'more', label: 'More', icon: '⋯' },
+];
+const DEFAULT_TABS = ['program', 'projects', 'gates', 'risks', 'time'];
+function getTabs() {
+  try { return JSON.parse(localStorage.getItem('hub_tabs')) || DEFAULT_TABS; } catch { return DEFAULT_TABS; }
+}
+function buildNav() {
+  const nav = document.getElementById('nav');
+  nav.innerHTML = getTabs().map(id => {
+    const v = ALL_VIEWS.find(x => x.id === id);
+    return v ? `<button data-view="${v.id}" title="${v.label}">${v.icon} ${v.label}</button>` : '';
+  }).join('');
+}
+document.getElementById('nav').addEventListener('click', e => {
+  const v = e.target.dataset.view;
+  if (v) { currentView = v; render(); }
+});
+const menu = document.getElementById('menu');
+document.getElementById('hamburger').addEventListener('click', e => {
+  e.stopPropagation();
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+});
+document.addEventListener('click', e => {
+  if (e.target.id !== 'hamburger' && !menu.contains(e.target)) menu.style.display = 'none';
+});
+function buildMenu() {
+  const sections = [
+    ['Program', [['settings', 'Settings'], ['tabs', 'My tabs']]],
+    ['Work', [['work', 'Work (Register / Kanban)'], ['more:ledger', 'Decisions & Conditions'], ['expenses', 'Expenses'], ['more:timereport', 'Time Report']]],
+    ['Planning', [['planning', 'Planning (Gantt / Calendar / WBS)']]],
+    ['Insights', [['readiness', 'Readiness (MRF)'], ['more:briefing', 'Briefing Pack'], ['more:agents', 'AI Agents'], ['more:allocation', 'Allocation grid'], ['more:invoicing', 'Invoicing'], ['more:bookkeeping', 'Bookkeeping'], ['more:projaccounting', 'Proj. Accounting'], ['more:consolidation', 'Consolidation'], ['more:timereport', 'Time Report']]],
+  ];
+  menu.innerHTML = sections.map(([title, items]) => `
+    <div class="small muted" style="padding:6px 10px 2px;font-weight:700">${title}</div>
+    ${items.map(([v, l]) => `<button class="menu-item" data-goto="${v}" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px">${l}</button>`).join('')}
+  `).join('');
+  menu.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click', () => {
+    menu.style.display = 'none';
+    const g = b.dataset.goto;
+    if (g === 'tabs') { currentView = 'settings'; settingsTab = 'tabs'; render(); return; }
+    if (g.startsWith('more:')) { subView = g.slice(5); currentView = 'more'; render(); return; }
+    if (g === 'settings') { currentView = 'settings'; settingsTab = 'store'; render(); return; }
+    currentView = g; render();
+  }));
+}
+document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click', () => {
+  menu.style.display = 'none';
+  if (b.id === 'menuModules') settingsTab = 'store';
+  else if (b.id === 'menuImport') settingsTab = 'import';
+  else if (b.id === 'menuProgram') settingsTab = 'program';
+  else if (b.id === 'menuRepo') settingsTab = 'repo';
+  else if (b.id === 'menuAgents') settingsTab = 'agents';
+  else if (b.id === 'menuUsers') settingsTab = 'users';
+  else if (b.id === 'menuMistral') settingsTab = 'mistral';
+  else if (b.id === 'menuTabs') settingsTab = 'tabs';
+  else if (b.id === 'menuTime') settingsTab = 'time';
+  else settingsTab = 'store';
+  currentView = 'settings'; render();
+}));
+async function render() {
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === currentView));
+  if (currentView === 'home' || currentView === 'dashboard') return renderDashboard();
+  if (currentView === 'program') return renderRoadmap();
+  if (currentView === 'projects') return renderProjects();
+  if (currentView === 'project') return renderProject();
+  if (currentView === 'risks') { subView = 'raid'; currentView = 'more'; return render(); }
+  if (currentView === 'time') { app = document.getElementById('app'); return renderTimeReport(); }
+  if (currentView === 'expenses') return renderExpenses();
+  if (currentView === 'gates') return renderGates();
+  if (currentView === 'readiness') return renderReadiness();
+  if (currentView === 'settings') return renderSettings();
+  if (currentView === 'roadmap') return renderRoadmap();
+  const SUB = { work: ['register', 'kanban'], planning: ['gantt', 'calendar', 'wbs'], more: ['ledger', 'raid', 'timereport', 'agents', 'briefing', 'allocation', 'invoicing', 'bookkeeping', 'projaccounting', 'consolidation'] };
+  if (SUB[currentView]) {
+    const sub = SUB[currentView].includes(subView) ? subView : SUB[currentView][0];
+    const labels = { register: 'Register', kanban: 'Kanban', gantt: 'Gantt', calendar: 'Calendar', wbs: 'WBS', ledger: 'Decisions & Conditions', raid: 'RAID', timereport: 'Time Report', agents: 'AI Agents', briefing: 'Briefing Pack', allocation: 'Allocation', invoicing: 'Invoicing', bookkeeping: 'Bookkeeping', projaccounting: 'Proj. Accounting', consolidation: 'Consolidation' };
+    app.innerHTML = `<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">${SUB[currentView].map(s => `<button class="btn ${s === sub ? '' : 'ghost'}" onclick="subView='${s}';render()">${labels[s]}</button>`).join('')}</div><div id="subview"></div>`;
+    app = document.getElementById('subview');
+    if (sub === 'register') await renderRegister();
+    else if (sub === 'kanban') await renderKanban();
+    else if (sub === 'gantt') await renderGantt();
+    else if (sub === 'calendar') await renderCalendar();
+    else if (sub === 'wbs') await renderWbs();
+    else if (sub === 'ledger') await renderLedger();
+    else if (sub === 'raid') await renderRaid();
+    else if (sub === 'timereport') await renderTimeReport();
+    else if (sub === 'agents') await renderAgents();
+    else if (sub === 'briefing') await renderBriefing();
+    else if (sub === 'allocation') await renderAllocation();
+    else await renderPlaceholder(sub);
+    app = document.getElementById('app');
+    return;
+  }
+}
+function lightDot(l, lg) { return `<span class="tl tl-${esc(l||'green')}${lg?' tl-lg':''}" title="${esc(l||'green')}"></span>`; }
+async function setProjectLight(id, light) { await api('/light/project', 'POST', { id, light }); render(); }
+async function setProgramLight(light) { await api('/light/program', 'POST', { light }); render(); }
+function lightPicker(current, onPick) {
+  return `<span style="display:inline-flex;gap:6px;align-items:center">${['green','amber','red'].map(l => `<span class="tl tl-${l}" title="set ${l}" onclick="(${onPick})('${l}')"></span>`).join('')}</span>`;
+}
+const BAND_CLS = { green: 'tl-green', amber: 'tl-amber', red: 'tl-red' };
+async function renderDashboard() {
+  const d = await api('/dashboard');
+  const g = d.next_gate, r = d.next_gate_readiness;
+  const raid = await api('/raid');
+  const openRisks = raid.filter(x => x.type === 'risk' && x.status !== 'closed').length;
+  const openHigh = raid.filter(x => x.severity === 'high' || x.severity === 'very_high').length;
+  const pl = d.program_light;
+  const raidAll = await api('/raid');
+  const openByProj = {};
+  const delsAll = await api('/deliverables');
+  delsAll.forEach(dd => { if (dd.state !== 'verified') openByProj[dd.project_id] = (openByProj[dd.project_id] || 0) + 1; });
+  const issuesByProj = {};
+  raidAll.forEach(r => { if (r.status !== 'closed') { const dp = delsAll.find(dd => (r.description || '').includes(dd.id)); if (dp) issuesByProj[dp.project_id] = (issuesByProj[dp.project_id] || 0) + 1; } });
+  const psort = window._psort || 'type';
+  const ragRank = { red: 0, amber: 1, green: 2 };
+  const projects = [...d.projects].sort((a, b) => {
+    if (psort === 'rag') return ragRank[a.light] - ragRank[b.light] || a.name.localeCompare(b.name);
+    if (psort === 'name') return a.name.localeCompare(b.name);
+    if (psort === 'open') return (openByProj[b.id] || 0) - (openByProj[a.id] || 0);
+    if (psort === 'issues') return (issuesByProj[b.id] || 0) - (issuesByProj[a.id] || 0);
+    return (a.project_type || '').localeCompare(b.project_type || '') || a.name.localeCompare(b.name);
+  });
+  app.innerHTML = `
+    <div class="panel" style="display:flex;gap:24px;align-items:stretch;margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:center;padding:6px 10px;border-right:1px solid var(--glass-border)">
+        <div style="display:flex;flex-direction:column;gap:5px;background:rgba(0,0,0,.35);border:1px solid var(--glass-border);border-radius:12px;padding:8px">
+          <span class="tl ${pl === 'red' ? 'tl-red' : ''}" style="${pl === 'red' ? '' : 'opacity:.25'}"></span>
+          <span class="tl ${pl === 'amber' ? 'tl-amber' : ''}" style="${pl === 'amber' ? '' : 'opacity:.25'}"></span>
+          <span class="tl ${pl === 'green' ? 'tl-green' : ''}" style="${pl === 'green' ? '' : 'opacity:.25'}"></span>
+        </div>
+        <span class="small muted">${pl.toUpperCase()}</span>
+      </div>
+      <div style="flex:1">
+        <h2 style="margin-bottom:2px">The Hub — Program overview</h2>
+        <div class="sub" style="margin-bottom:12px">${esc(d.today)} · click to open roadmap</div>
+        <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="card"><div class="kpi">${r ? r.pct + '%' : '—'}</div><div class="lbl">Evidence readiness · next gate ${esc(g?.id)}</div></div>
+          <div class="card"><div class="kpi">${openRisks}</div><div class="lbl">Open risks (of ${raid.length} RAID items)</div></div>
+          <div class="card"><div class="kpi">${openHigh}</div><div class="lbl">High / very-high RAID</div></div>
+          <div class="card"><div class="kpi">${d.counts.open_conditions}</div><div class="lbl">Open gate conditions ${d.counts.overdue_conditions ? `(${d.counts.overdue_conditions} overdue)` : ''}</div></div>
+          <div class="card"><div class="kpi">${d.counts.open_decisions}</div><div class="lbl">Open / escalated decisions</div></div>
+          <div class="card"><div class="kpi">${d.counts.blocked_deliverables}</div><div class="lbl">Blocked deliverables</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:16px">
+      <h3>Projects
+        <select id="projSort" onchange="window._psort=this.value;render()" style="margin-left:10px;font-size:12px;padding:3px 6px;width:auto">
+          <option value="type" ${(window._psort||'type')==='type'?'selected':''}>Sort: type</option>
+          <option value="rag" ${(window._psort||'')==='rag'?'selected':''}>Sort: RAG status</option>
+          <option value="name" ${(window._psort||'')==='name'?'selected':''}>Sort: name</option>
+          <option value="open" ${(window._psort||'')==='open'?'selected':''}>Sort: most open deliverables</option>
+          <option value="issues" ${(window._psort||'')==='issues'?'selected':''}>Sort: most issues</option>
+        </select>
+      </h3>
+      <div id="projTable"></div>
+      </div>
+    </div>
+    <div class="grid two-col">
+      <div class="panel">
+        <h3>Next gate — ${esc(g?.name)} (${esc(g?.id)})</h3>
+        <div class="muted small">Scheduled ${esc(g?.scheduled_date)} · Gate Chair: ${esc(g?.chair)} · ${gatePill(g?.status)}</div>
+        <div class="bar" style="margin:12px 0"><div style="width:${r?.pct}%"></div></div>
+        <div class="small muted">${r?.total} deliverables in the evidence contract · ${r?.verified} verified</div>
+        ${d.mrf ? `<div style="margin-top:10px;display:flex;align-items:center;gap:8px"><span class="tl ${BAND_CLS[d.mrf.band]}"></span><span class="small">MRF readiness <b>${d.mrf.score}/100</b> · <b>${d.mrf.outcome}</b> — <a href="#" onclick="currentView='readiness';window._rgGate='${esc(d.mrf.gate_id)}';render();return false" style="color:#8ab8ff">open readiness</a></span></div>` : ''}
+      </div>
+      <div class="panel">
+        <h3>Needs your attention — signal, not noise</h3>
+        ${d.attention.length ? d.attention.map(a => `<div class="att">${esc(a)}</div>`).join('') : '<div class="muted">Nothing flagged.</div>'}
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>💬 Ask The Hub</h3>
+      <div class="small muted" style="margin-bottom:10px">Ask about milestones, gates, deliverables, risks, decisions, projects. Your name: <input id="chatUser" placeholder="e.g. A. Reinhart" style="width:150px" value="${esc(window._chatUser || '')}"> <span class="muted" id="chatVia"></span></div>
+      <div id="chatLog" style="max-height:260px;overflow-y:auto;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <input id="chatMsg" style="flex:1" placeholder="Ask about milestone status, my deliverables, risks…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn" onclick="sendChat()">Send</button>
+      </div>
+    </div>`;
+  const pt = document.getElementById('projTable');
+  if (pt) pt.innerHTML = projectsTable(projects, delsAll);
+  const log = document.getElementById('chatLog');
+  (window._chat || []).forEach(m => log.appendChild(chatBubble(m)));
+}
+
+function projectsTable(projects, dels) {
+  const comp = {};
+  projects.forEach(p => {
+    const pd = dels.filter(d => d.project_id === p.id);
+    comp[p.id] = pd.length ? Math.round(100 * pd.filter(d => d.state === 'verified').length / pd.length) : 0;
+  });
+  const kpi = v => `<span class="tl tl-${esc(v)}" title="${esc(v)}"></span>`;
+  return `
+    <div style="overflow-x:auto">
+    <table style="min-width:1100px;border-collapse:separate;border-spacing:0 8px">
+      <tr class="muted small"><th style="text-align:left">Project</th><th>Description</th><th>Completion</th><th>RAG</th><th>Time</th><th>Quality</th><th>Cost</th><th>Trend</th><th>Start</th><th>End</th><th>PM</th></tr>
+      ${projects.map(p => `
+      <tr style="background:rgba(255,255,255,.04);cursor:pointer" onclick="openProject('${p.id}')">
+        <td style="padding:10px;border-radius:8px 0 0 8px"><div style="display:flex;align-items:center;gap:8px"><span class="tl tl-${esc(p.light)} tl-lg"></span><div><div style="font-weight:700">${esc(p.name)}</div><div class="small muted">${esc(p.project_type)}</div></div></div></td>
+        <td class="small" style="max-width:220px">${esc(p.description || '—')}</td>
+        <td style="min-width:120px"><div class="bar" style="height:10px"><div style="width:${comp[p.id]}%"></div></div><span class="small">${comp[p.id]}%</span></td>
+        <td>${kpi(p.light)}</td><td>${kpi(p.time_kpi)}</td><td>${kpi(p.quality)}</td><td>${kpi(p.cost)}</td>
+        <td style="font-size:15px">${p.trend === 'up' ? '▲' : p.trend === 'down' ? '▼' : '▶'}</td>
+        <td class="small">${esc(p.start_date)}</td><td class="small">${esc(p.end_date)}</td>
+        <td class="small" style="border-radius:0 8px 8px 0">${esc(p.pm || '—')}</td>
+      </tr>`).join('')}
+    </table>
+    </div>`;
+}
+async function renderProjects() {
+  const [r, dels] = await Promise.all([api('/roadmap'), api('/deliverables')]);
+  const projects = [...r.projects].sort((a, b) => (a.project_type || '').localeCompare(b.project_type || '') || a.name.localeCompare(b.name));
+  app.innerHTML = `
+    <h2>Projects</h2>
+    <div class="sub">One swimlane per project · click a row for the project charter</div>
+    <div class="panel">${projectsTable(projects, dels)}</div>`;
+}
+async function openProject(id) { currentProject = id; currentView = 'project'; render(); }
+async function renderProject() {
+  const [progs, dels, wbs, t, gates] = await Promise.all([api('/program'), api('/deliverables'), api('/wbs'), api('/timereport'), api('/gates')]);
+  const p = progs.projects.find(x => x.id === currentProject);
+  if (!p) { currentView = 'projects'; return render(); }
+  const pd = dels.filter(d => d.project_id === p.id);
+  const pw = wbs.filter(w => w.project_id === p.id);
+  const pt = t.entries.filter(e => e.project_id === p.id);
+  const pGates = gates.filter(g => pd.some(d => d.gate_id === g.id));
+  const hours = pt.reduce((s, e) => s + e.hours, 0);
+  app.innerHTML = `
+    <h2>${esc(p.name)}</h2>
+    <div class="sub">${esc(p.project_type)} · SAP Activate: ${esc(p.sap_phase)} · ${esc(p.start_date)} → ${esc(p.end_date)} · ${esc(p.status)}
+        · <a href="https://teams.microsoft.com" target="_blank" style="color:#8ab8ff">📎 Teams project site</a></div>
+    <div class="grid cards" style="margin-bottom:16px">
+      <div class="card"><div class="kpi rag-${esc(p.light)}" style="-webkit-text-fill-color:currentColor;background:none">${esc(p.light.toUpperCase())}</div><div class="lbl">RAG status</div></div>
+      <div class="card"><div class="kpi">${pd.length}</div><div class="lbl">Deliverables</div></div>
+      <div class="card"><div class="kpi">${pd.length ? Math.round(100 * pd.filter(d => d.state === 'verified').length / pd.length) : 0}%</div><div class="lbl">Completion</div></div>
+      <div class="card"><div class="kpi">${pw.length}</div><div class="lbl">WBS nodes</div></div>
+      <div class="card"><div class="kpi">${pGates.length}</div><div class="lbl">Gates touched</div></div>
+    </div>
+    <div class="panel" style="margin-bottom:16px">
+      <h3>Project charter</h3>
+      <label class="small muted">Scope</label>
+      <input id="charterScope" style="width:100%" placeholder="Scope of this project…" value="${esc(p.charter_scope || '')}">
+      <label class="small muted" style="margin-top:10px;display:block">Description</label>
+      <input id="charterDesc" style="width:100%" placeholder="Short description…" value="${esc(p.description || '')}">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">
+        <span><label class="small muted">Project manager</label><input id="charterPm" style="width:160px" value="${esc(p.pm || '')}"></span>
+        <span><label class="small muted">Time</label><select id="kpiTime">${['green','amber','red'].map(v => `<option ${p.time_kpi === v ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
+        <span><label class="small muted">Quality</label><select id="kpiQuality">${['green','amber','red'].map(v => `<option ${p.quality === v ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
+        <span><label class="small muted">Cost</label><select id="kpiCost">${['green','amber','red'].map(v => `<option ${p.cost === v ? 'selected' : ''}>${v}</option>`).join('')}</select></span>
+        <span><label class="small muted">Trend</label><select id="kpiTrend">${[['up','▲ up'],['stable','▶ stable'],['down','▼ down']].map(([v,l]) => `<option value="${v}" ${p.trend === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+        <button class="btn" onclick="saveCharter()">Save</button>
+        <span class="small muted" id="charterStatus"></span>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:16px">
+      <h3>Project organization — drag people between streams / staff functions</h3>
+      <div id="orgChart" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+    </div>
+    <div class="grid two-col">
+      <div class="panel">
+        <h3>Deliverables in this project</h3>
+        <table><tr><th>ID</th><th>Deliverable</th><th>State</th><th>Gate</th><th>Due</th></tr>
+        ${pd.map(d => `<tr><td class="small">${esc(d.id)}</td><td>${esc(d.title)}</td><td>${statePill(d.state)}</td><td class="small">${esc(d.gate_id)}</td><td class="small">${esc(d.due_date)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">None linked.</td></tr>'}
+        </table>
+      </div>
+      <div class="panel">
+        <h3>WBS</h3>
+        ${pw.map(w => `<div class="small" style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06)">${esc(w.code)} ${esc(w.name)} <span class="muted">${esc(w.start_date)} → ${esc(w.end_date)}</span></div>`).join('') || '<div class="muted">No WBS yet.</div>'}
+        <h3 style="margin-top:14px">Hours this project</h3>
+        <table><tr><th>Owner</th><th>Hours</th><th>Week</th></tr>
+        ${pt.map(e => `<tr><td>${esc(e.owner)}</td><td>${e.hours}</td><td class="small">${esc(e.week)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">None.</td></tr>'}
+        </table>
+      </div>
+    </div>
+    <div style="margin-top:14px"><button class="btn ghost" onclick="currentView='projects';render()">← All projects</button>
+    <button class="btn ghost" onclick="currentView='program';render()">Roadmap</button></div>`;
+  renderOrgChart(p.id);
+}
+
+
+async function saveCharter() {
+  const p = (await api('/program')).projects.find(x => x.id === currentProject);
+  await api('/program/projects/update', 'POST', { id: p.id, name: p.name, program_phase_id: p.program_phase_id, sap_phase: p.sap_phase, start_date: p.start_date, end_date: p.end_date, status: p.status, light: p.light, project_type: p.project_type, charter_scope: document.getElementById('charterScope').value, description: document.getElementById('charterDesc').value, pm: document.getElementById('charterPm').value, quality: document.getElementById('kpiQuality').value, cost: document.getElementById('kpiCost').value, time_kpi: document.getElementById('kpiTime').value, trend: document.getElementById('kpiTrend').value });
+  document.getElementById('charterStatus').textContent = 'Saved.';
+}
+async function renderOrgChart(pid) {
+  const [org, users, ws] = await Promise.all([api('/org'), api('/users'), api('/workstreams')]);
+  const mine = org.filter(o => o.project_id === pid);
+  const streams = ws.map(w => w.name);
+  const box = document.getElementById('orgChart');
+  const W = 900, H = 520;
+  // default layout: PM top-center, staff boxes on sides, streams along the bottom
+  const pm = mine.find(o => o.role === 'pm') || mine[0];
+  const staff = mine.filter(o => o.role === 'staff');
+  const streamers = mine.filter(o => o.role !== 'pm' && o.role !== 'staff');
+  const BW = 150, BH = 56, GX = 24, GY = 46;
+  const cols = Math.max(2, Math.min(5, streamers.length || 2));
+  const layout = o => {
+    if (o.x || o.y) return [o.x, o.y];
+    if (o.role === 'pm' || (o === pm && !o.role)) return [W / 2 - BW / 2, 14];
+    if (o.role === 'staff') { const i = staff.indexOf(o); const side = i % 2, row = Math.floor(i / 2); return [side === 0 ? 30 : W - 30 - BW, 14 + BH + GY + row * (BH + GY)]; }
+    const i = streamers.indexOf(o); const row = Math.floor(i / cols), col = i % cols;
+    const totalW = cols * BW + (cols - 1) * GX;
+    return [Math.max(16, (W - totalW) / 2 + col * (BW + GX)), H - 16 - BH - row * (BH + GY)];
+  };
+  box.innerHTML = `
+    <div id="orgCanvas" style="position:relative;width:${W}px;height:${H}px;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:12px;overflow:auto;touch-action:none">
+      <svg id="orgLines" width="${W}" height="${H}" style="position:absolute;left:0;top:0;pointer-events:none"></svg>
+      ${mine.map(o => {
+        const u = users.find(x => x.username === o.username);
+        const [x, y] = layout(o);
+        return `<div class="orgbox" data-user="${esc(o.username)}" data-role="${esc(o.role)}" style="position:absolute;left:${x}px;top:${y}px;width:150px;padding:8px 10px;border-radius:10px;background:linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.05));border:1px solid ${o.role === 'pm' ? 'rgba(207,169,255,.7)' : o.role === 'staff' ? 'rgba(110,168,255,.6)' : 'rgba(94,227,138,.5)'};cursor:grab;touch-action:none">
+          <b>${esc(u ? u.name : o.username)}</b><div class="small muted">${esc(o.role === 'pm' ? 'Project Manager' : o.role === 'staff' ? 'Staff function' : o.stream)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+      <select id="orgAdd">${users.map(u => `<option value="${esc(u.username)}">${esc(u.name)}</option>`).join('')}</select>
+      <select id="orgAddRole"><option value="stream">Stream</option><option value="staff">Staff function</option><option value="pm">Project Manager</option></select>
+      <select id="orgAddStream"><option value="">— stream —</option>${streams.map(s => `<option>${esc(s)}</option>`).join('')}</select>
+      <button class="btn ghost" onclick="orgAdd('${pid}')">+ Add</button>
+      <span class="small muted">drag boxes (touch or mouse) to arrange; lines follow automatically</span>
+    </div>`;
+  const canvas = document.getElementById('orgCanvas');
+  const draw = () => {
+    const svg = document.getElementById('orgLines');
+    const boxes = [...canvas.querySelectorAll('.orgbox')];
+    const center = b => { const r = b.getBoundingClientRect(), c = canvas.getBoundingClientRect(); return [r.left - c.left + r.width / 2, r.top - c.top + r.height / 2]; };
+    const pmBox = boxes.find(b => b.dataset.role === 'pm');
+    let lines = '';
+    if (pmBox) {
+      const [px, py] = center(pmBox);
+      const busY = py + 24;
+      lines += `<line x1="${px}" y1="${py}" x2="${px}" y2="${busY}" stroke="rgba(200,215,255,.5)" stroke-width="1.5"/>`;
+      const others = boxes.filter(b => b !== pmBox);
+      if (others.length) {
+        const minX = Math.min(...others.map(b => center(b)[0])), maxX = Math.max(...others.map(b => center(b)[0]));
+        lines += `<line x1="${minX}" y1="${busY}" x2="${maxX}" y2="${busY}" stroke="rgba(200,215,255,.5)" stroke-width="1.5"/>`;
+        others.forEach(b => {
+          const [x, y] = center(b);
+          lines += `<line x1="${x}" y1="${busY}" x2="${x}" y2="${y}" stroke="rgba(200,215,255,.5)" stroke-width="1.5"/>`;
+        });
+      }
+    }
+    svg.innerHTML = lines;
+  };
+  box.querySelectorAll('.orgbox').forEach(bx => {
+    const onDown = e => {
+      const pt = e.touches ? e.touches[0] : e;
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const ox = bx.offsetLeft, oy = bx.offsetTop, sx = pt.clientX, sy = pt.clientY;
+      const move = ev => {
+        const p = ev.touches ? ev.touches[0] : ev;
+        bx.style.left = Math.max(0, Math.min(W - 150, ox + p.clientX - sx)) + 'px';
+        bx.style.top = Math.max(0, Math.min(H - 50, oy + p.clientY - sy)) + 'px';
+        draw();
+      };
+      const up = async ev => {
+        document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+        document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
+        await api('/org/pos', 'POST', { project_id: pid, username: bx.dataset.user, x: bx.offsetLeft, y: bx.offsetTop });
+      };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+      document.addEventListener('touchmove', move, { passive: false }); document.addEventListener('touchend', up);
+    };
+    bx.addEventListener('mousedown', onDown);
+    bx.addEventListener('touchstart', onDown, { passive: false });
+  });
+  draw();
+  window.addEventListener('resize', draw);
+}
+async function orgAdd(pid) {
+  const un = document.getElementById('orgAdd').value;
+  const st = document.getElementById('orgAddStream').value;
+  const role = document.getElementById('orgAddRole').value;
+  if (!un) return;
+  await api('/org/move', 'POST', { project_id: pid, username: un, stream: st, role });
+  toast(`Added ${un} (${role})`); render();
+}
+async function renderGates() {
+  const gates = await api('/gates');
+  const current = gates.find(g => g.status === 'in_progress') || gates.find(g => g.status === 'upcoming');
+  app.innerHTML = `
+    <h2>Gate Rail</h2>
+    <div class="sub">Evidence contract per gate · one named Gate Chair decides · each gate has a printable report</div>
+    <div class="gate-rail">
+      ${gates.map(g => `
+        <div class="gate-node ${current && g.id === current.id ? 'current' : ''}">
+          <div class="gid">${esc(g.id)} ${gatePill(g.status)}
+            <span class="tl ${g.status === 'passed' || g.status === 'passed_with_conditions' ? 'tl-green' : g.status === 'in_progress' ? '' : 'tl-gray'}" ${g.status === 'in_progress' ? 'style="background:#4c9aff;box-shadow:0 0 8px rgba(76,154,255,.9);border-radius:50%;display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.25)"' : ''} title="${esc(g.status)}"></span>
+          </div>
+          <div class="gname">${esc(g.name)}</div>
+          <div class="bar" style="margin-bottom:6px"><div style="width:${g.readiness.pct}%"></div></div>
+          <div class="gdate">${esc(g.scheduled_date)} · readiness ${g.readiness.pct}%</div>
+          <div style="margin-top:8px;position:relative;display:inline-block">
+            <button class="kb-del" style="font-size:16px" title="Actions" onclick="openGateMenu(event, '${g.id}')">⋮</button>
+            <div class="rowmenu" id="gm_${g.id}" style="display:none;position:absolute;left:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:170px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:999">
+              <button class="menu-item" onclick="openGate('${g.id}');closeGateMenus()">Details</button>
+              <button class="menu-item" onclick="window.open('/report/${g.id}','_blank');closeGateMenus()">📄 Report</button>
+              <button class="menu-item" onclick="customizeReport('${g.id}');closeGateMenus()">✎ Cover</button>
+              <div style="border-top:1px solid var(--glass-border);margin:4px 0"></div>
+              <button class="menu-item" style="color:var(--red)" onclick="deleteGate('${g.id}');closeGateMenus()">✕ Delete</button>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+async function renderReadiness() {
+  const gates = await api('/gates');
+  const sel = document.getElementById('rgSel');
+  const current = sel ? sel.value : (window._rgGate || (gates.find(g => g.status === 'in_progress') || gates[0]).id);
+  window._rgGate = current;
+  const r = await api('/readiness/' + current);
+  const outcomeCls = { READY: 'p-green', CONDITIONAL: 'p-amber', 'NOT READY': 'p-red' }[r.outcome] || 'p-red';
+  app.innerHTML = `
+    <h2>Milestone Readiness — computed from evidence</h2>
+    <div class="sub">Milestone Readiness Framework · status is derived, not declared · bands, score and outcome computed server-side only</div>
+    <div style="display:flex;gap:10px;align-items:stretch;margin-bottom:16px;flex-wrap:wrap">
+      <select id="rgSel" onchange="window._rgGate=this.value;render()">${gates.map(g => `<option ${g.id===current?'selected':''} value="${g.id}">${esc(g.id)} ${esc(g.name)}</option>`).join('')}</select>
+      <div class="card" style="padding:12px 20px"><div class="kpi" style="font-size:26px">${r.score}<span class="muted" style="font-size:14px">/100</span></div><div class="lbl">weighted score · computed ${esc(r.computed_at)}</div></div>
+      <div class="card" style="padding:12px 20px;display:flex;align-items:center;gap:10px"><span class="tl ${BAND_CLS[r.band]} tl-lg"></span><div class="lbl">overall band<br><b>${r.band.toUpperCase()}</b></div></div>
+      <div class="card" style="padding:12px 20px"><span class="pill ${outcomeCls}" style="font-size:14px">${r.outcome}</span><div class="lbl">recommended outcome (mechanical rule)</div></div>
+      <div class="card" style="padding:12px 20px"><div class="kpi" style="font-size:18px">${r.stale_count}</div><div class="lbl">stale / unmeasured criteria · oldest as-at ${esc(r.oldest_as_at || '—')}</div></div>
+    </div>
+    <div class="panel">
+      <h3>Dimension strip — 8 weighted areas (band = computed, never typed)</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px">
+        ${r.dimensions.map(d => `
+          <div style="border:1px solid var(--glass-border);border-radius:12px;padding:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <strong>${esc(d.id)} ${esc(d.name)}</strong>
+              <span style="display:flex;align-items:center;gap:6px"><span class="tl ${BAND_CLS[d.band]}"></span><span class="small">${d.score}</span></span>
+            </div>
+            <div class="small muted">weight ${d.weight}% · score ${d.score} → ${d.band.toUpperCase()}</div>
+            ${d.criteria.map(c => `
+              <div style="display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)">
+                <span class="tl ${BAND_CLS[c.band]}" title="${esc(c.band)}${c.stale?' — STALE, dropped a band':''}${c.override?' · OVERRIDE: '+esc(c.override):''}"></span>
+                <div class="small">${esc(c.id)} ${esc(c.statement)}<div class="muted" style="font-size:11px">value: ${esc(c.value || '— unmeasured = Red')} · as-at ${esc(c.as_at || '—')} · ${esc(c.source || 'no source')}</div></div>
+                <button class="kb-del" title="Edit evidence" onclick="editEvidence('${current}','${c.id}')">✎</button>
+              </div>`).join('')}
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+async function editEvidence(gateId, critId) {
+  const r = await api('/readiness/' + gateId);
+  const crit = r.dimensions.flatMap(d => d.criteria).find(c => c.id === critId);
+  document.getElementById('modal').innerHTML = `
+    <h3>Evidence — ${esc(critId)} (${esc(crit.statement)})</h3>
+    <label>Measured value (empty = unmeasured → Red)</label><input id="evVal" value="${esc(crit.value)}">
+    <label>As-at date (older than 7 days drops a band)</label><input id="evDate" type="date" value="${esc(crit.as_at)}">
+    <label>Source instance (empty = no source → Red)</label><input id="evSrc" value="${esc(crit.source)}">
+    <label>Owner override note (logged + shown as override; cannot change the score)</label><input id="evOv" value="${esc(crit.override || '')}" placeholder="optional">
+    <div class="row">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="saveEvidence('${gateId}','${critId}')">Save evidence</button>
+    </div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+async function saveEvidence(gateId, critId) {
+  await api('/readiness/evidence', 'POST', {
+    gate_id: gateId, criterion_id: critId,
+    value: document.getElementById('evVal').value,
+    as_at: document.getElementById('evDate').value,
+    source: document.getElementById('evSrc').value,
+    override: document.getElementById('evOv').value,
+  });
+  closeModal(); render();
+}
+async function openGate(id) {
+  const g = await api('/gates/' + id);
+  document.getElementById('modal').innerHTML = `
+    <h3>${esc(g.id)} — ${esc(g.name)}</h3>
+    <div class="small muted">${esc(g.phase)} phase · scheduled ${esc(g.scheduled_date)} · Chair: ${esc(g.chair)} · ${gatePill(g.status)}</div>
+    <p style="margin-top:12px"><strong>Entry criteria:</strong> ${esc(g.entry_criteria)}</p>
+    <p style="margin-top:8px"><strong>Exit criteria:</strong> ${esc(g.exit_criteria)}</p>
+    <p style="margin-top:12px"><strong>Evidence contract (${g.readiness.total} deliverables, ${g.readiness.pct}% ready):</strong></p>
+    <table><tr><th>ID</th><th>Deliverable</th><th>Owner</th><th>State</th><th>Evidence</th><th>Grade</th></tr>
+    ${g.readiness.items.map(i => `<tr><td>${esc(i.id)}</td><td>${esc(i.title)}</td><td>${esc(i.owner)}</td><td>${statePill(i.state)}</td><td>${evPill(i.evidence)}</td><td><b>${esc(i.grade || '—')}</b></td></tr>`).join('')}
+    </table>
+    ${g.conditions.length ? `<p style="margin-top:12px"><strong>Conditions:</strong></p>${g.conditions.map(c => `<div class="att">${esc(c.id)} ${esc(c.text)} — ${condPill(c.status)}</div>`).join('')}` : ''}
+    ${g.status === 'in_progress' || g.status === 'upcoming' ? `<div style="margin-top:16px"><button class="btn" onclick="decideGate('${g.id}')">Record gate decision</button></div>` : ''}
+    <div class="row"><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+function decideGate(id) {
+  document.getElementById('modal').innerHTML = `
+    <h3>Gate decision — ${esc(id)}</h3>
+    <label>Outcome (the Chair decides on the assembled record)</label>
+    <select id="dOutcome">
+      <option value="passed">Pass</option>
+      <option value="passed_with_conditions">Pass with enforced conditions</option>
+      <option value="held">Hold</option>
+      <option value="failed">Fail</option>
+    </select>
+    <label>Note</label><input id="dNote" value="Decided on assembled evidence">
+    <div id="condBox" style="display:none">
+      <label>Enforced conditions (re-examined at next gate)</label>
+      <div id="condList"></div>
+      <button class="btn ghost" style="margin-top:8px" onclick="addCond()">+ Add condition</button>
+    </div>
+    <div class="row">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" onclick="submitDecision('${id}')">Record decision</button>
+    </div>`;
+  document.getElementById('dOutcome').addEventListener('change', e => {
+    document.getElementById('condBox').style.display = e.target.value === 'passed_with_conditions' ? 'block' : 'none';
+  });
+  addCond();
+}
+function addCond() {
+  const list = document.getElementById('condList');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;gap:6px;margin-top:6px';
+  div.innerHTML = `<input placeholder="Condition text" class="cText" style="flex:1"><input placeholder="Owner" class="cOwner" style="width:110px"><input type="date" class="cDue" style="width:140px">`;
+  list.appendChild(div);
+}
+async function submitDecision(id) {
+  const conditions = [...document.querySelectorAll('#condList > div')].map(d => ({
+    text: d.querySelector('.cText').value, owner: d.querySelector('.cOwner').value, due_date: d.querySelector('.cDue').value,
+  })).filter(c => c.text && c.owner && c.due_date);
+  await api('/gates/decision', 'POST', { gate_id: id, outcome: document.getElementById('dOutcome').value, note: document.getElementById('dNote').value, conditions });
+  closeModal(); render();
+}
+async function renderRegister() {
+  const [dels, ws, cols, users, progs] = await Promise.all([api('/deliverables'), api('/workstreams'), api('/kanban/columns'), api('/users'), api('/program')]);
+  const wsName = Object.fromEntries(ws.map(w => [w.id, w.name]));
+  const userOptions = users.map(u => `<option value="${esc(u.username)}">${esc(u.name)} (${esc(u.username)})</option>`).join('');
+  const projectOptions = progs.projects.map(p => `<option value="${p.id}">${esc(p.id)}</option>`).join('');
+  const stateOptions = cols.map(c => `<option value="${esc(c.id)}">${esc(c.label)}</option>`).join('');
+  app.innerHTML = `
+    <h2>Deliverables Register</h2>
+    <div class="sub">Every deliverable, owned, graded and gated · evidence linked · ⋮ row menu for task apps & sharing</div>
+    <div class="panel">
+      <table>
+        <tr><th>ID</th><th>Deliverable</th><th>Workstream</th><th>Owner</th><th>Gate</th><th>State</th><th>Due</th><th>Depends on</th><th>Evidence</th><th>Grade</th><th>Type</th><th>Responsible</th><th>Project</th><th></th></tr>
+        ${dels.map(d => `<tr>
+          <td class="small">${esc(d.id)}</td><td>${esc(d.title)}<div class="small muted">${esc(d.description)}</div></td>
+          <td class="small">${esc(wsName[d.workstream_id] || d.workstream_id)}</td><td>${esc(d.owner)}</td>
+          <td class="small">${esc(d.gate_id)}</td>
+          <td><select onchange="updDel('${d.id}', this.value)">${stateOptions.replace(`value="${d.state}"`, `value="${d.state}" selected`)}</select></td>
+          <td class="small">${esc(d.due_date)}</td>
+          <td class="small">${esc(JSON.parse(d.dependency_ids).join(', ') || '—')}</td>
+          <td class="small muted">${d.evidence_ref ? `<a href="#" onclick="return false" title="${esc(d.evidence_ref)}" style="color:#8ab8ff">${esc(d.evidence_ref)}</a>` : 'none cited'}</td>
+          <td><select onchange="gradeDel('${d.id}', this.value)">${['','A','B','C','D','F'].map(g => `<option ${g===d.grade?'selected':''} value="${g}">${g||'—'}</option>`).join('')}</select></td>
+          <td><select onchange="updDelField('${d.id}', 'dtype', this.value)">${['task','milestone','document','report','other'].map(t => `<option ${t===d.dtype?'selected':''}>${t}</option>`).join('')}</select></td>
+          <td><select onchange="assignDel('${d.id}', 'responsible_user', this.value)"><option value="">—</option>${userOptions.replace(`value="${d.responsible_user}"`, `value="${d.responsible_user}" selected`)}</select></td>
+          <td><select onchange="assignDel('${d.id}', 'project_id', this.value)"><option value="">—</option>${projectOptions.replace(`value="${d.project_id}"`, `value="${d.project_id}" selected`)}</select></td>
+          <td style="position:relative"><button class="kb-del" style="font-size:15px" title="Actions" onclick="openRowMenu(event, '${d.id}')">⋮</button>
+            <div class="rowmenu" id="rm_${d.id}" style="display:none;position:absolute;right:0;top:26px;background:linear-gradient(165deg, rgba(52,62,92,.92), rgba(22,28,48,.95));border:1px solid var(--glass-border);border-radius:12px;padding:6px;min-width:190px;box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(24px);z-index:999">
+              <div class="small muted" style="padding:4px 8px">Send to task app</div>
+              <button class="menu-item" onclick="sendToTaskApp('google_tasks','${d.id}');closeRowMenus()">Google Tasks</button>
+              <button class="menu-item" onclick="sendToTaskApp('ms_todo','${d.id}');closeRowMenus()">Microsoft To Do</button>
+              <button class="menu-item" onclick="sendToTaskApp('todoist','${d.id}');closeRowMenus()">Todoist</button>
+              <div style="border-top:1px solid var(--glass-border);margin:4px 0"></div>
+              <button class="menu-item" onclick="shareDeliverable('${d.id}');closeRowMenus()">🔗 Share…</button>
+              <div style="border-top:1px solid var(--glass-border);margin:4px 0"></div>
+              <button class="menu-item" style="color:var(--red)" onclick="deleteDeliverable('${d.id}');closeRowMenus()">✕ Delete</button>
+            </div></td></tr>`).join('')}
+      </table>
+    </div>`;
+}
+async function updDel(id, state) { await api('/deliverables/update', 'POST', { id, state }); if (currentView === 'dashboard') renderDashboard(); }
+async function updDelField(id, field, value) { await api('/deliverables/update', 'POST', { id, [field]: value }); }
+function _floatMenu(m, anchor) {
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect();
+  m.style.position = 'fixed';
+  m.style.left = Math.min(r.left, window.innerWidth - 210) + 'px';
+  m.style.top = (r.bottom + 4) + 'px';
+  m.style.display = 'block';
+}
+function openRowMenu(e, id) {
+  e.stopPropagation();
+  const m = document.getElementById('rm_' + id);
+  const wasOpen = m.style.display === 'block' && m.parentElement === document.body;
+  closeRowMenus();
+  if (!wasOpen) _floatMenu(m, e.currentTarget);
+}
+function closeRowMenus() { document.querySelectorAll('body > .rowmenu').forEach(m => { m.style.display = 'none'; }); }
+document.addEventListener('click', () => { closeRowMenus(); closeGateMenus(); });
+async function shareDeliverable(id) {
+  const res = await api('/share/create', 'POST', { deliverable_id: id });
+  if (res.ok) {
+    const url = location.origin + res.url;
+    try { await navigator.clipboard.writeText(url); alert('Share link copied to clipboard: ' + url); }
+    catch { prompt('Share link:', url); }
+  } else alert('Share failed: ' + (res.error || 'unknown'));
+}
+const STATE_PILL_CLS = { not_started: 'p-gray', in_progress: 'p-amber', in_review: 'p-purple', blocked: 'p-red', verified: 'p-green' };
+async function renderKanban() {
+  const [dels, ws, cols] = await Promise.all([api('/deliverables'), api('/workstreams'), api('/kanban/columns')]);
+  const wsName = Object.fromEntries(ws.map(w => [w.id, w.name]));
+  const byState = {};
+  cols.forEach(c => byState[c.id] = []);
+  dels.forEach(d => (byState[d.state] || byState[cols[0].id]).push(d));
+  app.innerHTML = `
+    <h2>Deliverables Kanban</h2>
+    <div class="sub">Drag a card to change state — updates the register and gate readiness instantly</div>
+    <div style="margin-bottom:14px"><button class="btn ghost" onclick="addColumn()">+ Add column</button></div>
+    <div class="kanban" id="kbBoard">
+      ${cols.map(c => `
+        <div class="kb-col" data-state="${esc(c.id)}">
+          <div class="kb-head">
+            ${pill(c.label, STATE_PILL_CLS[c.id] || 'p-purple')}
+            <span style="display:flex;gap:6px;align-items:center">
+              <span class="kb-count">${byState[c.id].length}</span>
+              ${c.is_default ? '' : `<button class="kb-del" title="Delete column" onclick="deleteColumn('${esc(c.id)}')">✕</button>`}
+            </span>
+          </div>
+          ${byState[c.id].map(d => {
+            const subs = dels.filter(x => (x.dependency_ids || '').includes(d.id)).length;
+            const prioCls = { high: 'p-red', medium: 'p-amber', low: 'p-gray' }[d.priority] || 'p-gray';
+            const tags = (d.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+            return `
+            <div class="kb-card" draggable="true" data-id="${esc(d.id)}">
+              <div class="kb-id">${esc(d.id)} · ${esc(d.gate_id)}${d.grade ? ' · ' + esc(d.grade) : ''} <span class="pill ${prioCls}" style="font-size:10px">${esc(d.priority || 'medium')}</span> <span class="pill p-gray" style="font-size:10px">${esc(d.dtype || 'task')}</span></div>
+              <div class="kb-title">${esc(d.title)}</div>
+              ${tags.length ? `<div style="margin-bottom:4px">${tags.map(t => `<span class="pill p-purple" style="font-size:10px;margin-right:3px">${esc(t)}</span>`).join('')}</div>` : ''}
+              <div class="kb-meta"><span>${esc(d.owner)}</span><span>${esc(wsName[d.workstream_id] || '')}</span><span>due ${esc(d.due_date)}</span></div>
+              <div class="kb-meta" style="margin-top:3px"><span>${d.planned_hours ? esc(d.planned_hours) + ' h planned' : ''}</span>${subs ? `<span>${subs} sub-task${subs > 1 ? 's' : ''}</span>` : ''}</div>
+            </div>`;
+          }).join('')}
+        </div>`).join('')}
+    </div>`;
+  document.querySelectorAll('.kb-card').forEach(card => {
+    card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', card.dataset.id); card.classList.add('dragging'); });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  });
+  document.querySelectorAll('.kb-col').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', async e => {
+      e.preventDefault(); col.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain'); const state = col.dataset.state;
+      if (id) { await api('/deliverables/update', 'POST', { id, state }); render(); }
+    });
+  });
+}
+async function renderLedger() {
+  const [conds, decs] = await Promise.all([api('/conditions'), api('/decisions')]);
+  app.innerHTML = `
+    <h2>Decision & Conditions Ledger</h2>
+    <div class="sub">Nothing evaporates — conditions re-examined at the next gate automatically</div>
+    <div class="grid two-col">
+      <div class="panel">
+        <h3>Gate conditions</h3>
+        <table><tr><th>ID</th><th>Condition</th><th>Gate</th><th>Owner</th><th>Due</th><th>Status</th></tr>
+        ${conds.map(c => `<tr><td class="small">${esc(c.id)}</td><td>${esc(c.text)}</td><td class="small">${esc(c.gate_id)}</td><td>${esc(c.owner)}</td><td class="small">${esc(c.due_date)}</td>
+          <td><select onchange="updCond('${c.id}', this.value)">${['open','met','expired'].map(s => `<option ${s===c.status?'selected':''} value="${s}">${s}</option>`).join('')}</select></td></tr>`).join('')}
+        </table>
+      </div>
+      <div class="panel">
+        <h3>Open decisions</h3>
+        <table><tr><th>ID</th><th>Decision</th><th>Owner</th><th>Needed by</th><th>Blocks</th><th>Status</th></tr>
+        ${decs.map(d => `<tr><td class="small">${esc(d.id)}</td><td>${esc(d.title)}<div class="small muted">${esc(d.description)}</div></td><td>${esc(d.owner)}</td><td class="small">${esc(d.needed_by)}</td><td class="small">${esc(d.blocks || '—')}</td>
+          <td><select onchange="updDec('${d.id}', this.value)">${['open','escalated','decided'].map(s => `<option ${s===d.status?'selected':''} value="${s}">${s}</option>`).join('')}</select></td></tr>`).join('')}
+        </table>
+      </div>
+    </div>`;
+}
+async function updCond(id, status) { await api('/conditions/update', 'POST', { id, status }); render(); }
+async function updDec(id, status) { await api('/decisions/update', 'POST', { id, status, decision: status === 'decided' ? 'Decided' : null }); render(); }
+async function renderRaid() {
+  const raid = await api('/raid');
+  app.innerHTML = `
+    <h2>Live RAID Picture</h2>
+    <div class="sub">Extracted from the record · movement since last gate included in every briefing</div>
+    <div class="panel">
+      <table><tr><th>ID</th><th>Type</th><th>Item</th><th>Severity</th><th>Status</th><th>Owner</th><th>Raised</th><th>Movement</th></tr>
+      ${raid.map(r => `<tr><td class="small">${esc(r.id)}</td><td>${pill(r.type, 'p-purple')}</td>
+        <td>${esc(r.title)}<div class="small muted">${esc(r.description)}</div></td>
+        <td>${sevPill(r.severity)}</td><td>${pill(r.status, r.status==='closed'?'p-green':r.status==='mitigating'?'p-amber':'p-red')}</td>
+        <td>${esc(r.owner)}</td><td class="small">${esc(r.raised_date)}</td>
+        <td>${r.movement === 'up' ? '▲ up' : r.movement === 'down' ? '▼ down' : r.movement === 'new' ? '● new' : '—'}</td></tr>`).join('')}
+      </table>
+    </div>`;
+}
+async function renderBriefing() {
+  const b = await api('/briefing');
+  app.innerHTML = `
+    <h2>Gate Briefing Pack</h2>
+    <div class="sub">Generated from the record with citations · ${esc(b.generated)} · readable in twenty minutes</div>
+    <div class="panel brief">
+      <h4>1 · Next gate</h4>
+      <div>${esc(b.next_gate?.id)} — ${esc(b.next_gate?.name)}, scheduled ${esc(b.next_gate?.scheduled_date)} · ${gatePill(b.next_gate?.status)}</div>
+      <h4>2 · Evidence completeness</h4>
+      <div class="bar" style="max-width:420px;margin:6px 0"><div style="width:${b.readiness?.pct}%"></div></div>
+      <div class="small muted">${b.readiness?.pct}% of the evidence contract is ready (${b.readiness?.verified}/${b.readiness?.total} deliverables verified)</div>
+      <table style="margin-top:8px"><tr><th>Deliverable</th><th>State</th><th>Evidence</th><th>Grade</th></tr>
+      ${(b.readiness?.items || []).map(i => `<tr><td>${esc(i.id)} ${esc(i.title)}</td><td>${statePill(i.state)}</td><td>${evPill(i.evidence)}</td><td><b>${esc(i.grade || '—')}</b></td></tr>`).join('')}</table>
+      <h4>3 · Exceptions ranked by consequence</h4>
+      <ul>${b.attention.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+      <h4>4 · Inherited conditions (carried forward)</h4>
+      <ul>${b.open_conditions.map(c => `<li>${esc(c.id)} (gate ${esc(c.gate_id)}, due ${esc(c.due_date)}, ${esc(c.owner)}): ${esc(c.text)}</li>`).join('') || '<li class="muted">None open</li>'}</ul>
+      <h4>5 · Open decisions</h4>
+      <ul>${b.open_decisions.map(d => `<li>${esc(d.id)} — ${esc(d.title)} (${esc(d.owner)}, needed by ${esc(d.needed_by)})</li>`).join('') || '<li class="muted">None open</li>'}</ul>
+      <h4>6 · RAID movement since last gate</h4>
+      <ul>${b.raid_movement.map(r => `<li>${esc(r.id)} [${esc(r.movement)}] ${esc(r.title)}</li>`).join('') || '<li class="muted">No new or escalated movement</li>'}</ul>
+      <h4>7 · Forecast</h4>
+      <ul>${b.forecast.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+    </div>`;
+}
+async function renderGantt() {
+  const g = await api('/gantt');
+  const all = [...g.deliverables.map(d => ({...d, kind: 'del', label: d.id + ' ' + d.title, date: d.due_date})),
+               ...g.gates.map(x => ({...x, kind: 'gate', label: x.id + ' ' + x.name, date: x.scheduled_date}))]
+              .sort((a, b) => a.date.localeCompare(b.date));
+  const min = all[0].date, max = all[all.length - 1].date;
+  const span = (new Date(max) - new Date(min)) / 86400000 || 1;
+  const pct = d => Math.max(0, Math.min(100, (new Date(d) - new Date(min)) / 86400000 / span * 100));
+  app.innerHTML = `
+    <h2>Gantt — deliverables & gates timeline</h2>
+    <div class="sub">${min} → ${max} · drag deliverable bars to reschedule</div>
+    <div class="panel">
+      ${all.map(r => `
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+          <div class="small">${r.kind === 'gate' ? '◆' : '•'} ${esc(r.label)} <span class="muted">${esc(r.owner || '')}</span></div>
+          <div style="position:relative;height:18px;background:rgba(255,255,255,.06);border-radius:6px" data-track="${r.kind==='del' ? esc(r.id) : ''}">
+            <div ${r.kind==='del' ? `draggable="true" data-id="${esc(r.id)}" data-date="${esc(r.date)}"` : ''} style="position:absolute;left:${pct(r.date)}%;width:${r.kind==='gate'?2:6}%;top:0;height:100%;border-radius:6px;background:${r.kind==='gate'?'var(--purple)':'linear-gradient(90deg,#6ea8ff,#cfa9ff)'};cursor:${r.kind==='del'?'grab':'default'}"></div>
+            <span class="small muted" style="position:absolute;left:${Math.min(pct(r.date)+2,78)}%;top:0">${esc(r.date)}</span>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  document.querySelectorAll('[data-id][draggable]').forEach(bar => {
+    bar.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', bar.dataset.id); e.dataTransfer.setData('text/date', bar.dataset.date); bar.style.opacity = .4; });
+    bar.addEventListener('dragend', () => bar.style.opacity = 1);
+  });
+  document.querySelectorAll('[data-track]').forEach(track => {
+    track.addEventListener('dragover', e => e.preventDefault());
+    track.addEventListener('drop', async e => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/plain');
+      if (!id) return;
+      const rect = track.getBoundingClientRect();
+      const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const dayMs = 86400000;
+      const newDate = new Date(new Date(min).getTime() + frac * span * dayMs).toISOString().slice(0, 10);
+      await api('/deliverables/update', 'POST', { id, due_date: newDate });
+      toast(`Rescheduled ${id} → ${newDate}`);
+      render();
+    });
+  });
+}
+async function renderCalendar() {
+  const c = await api('/calendar');
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const first = new Date(y, m, 1);
+  const startDow = (first.getDay() + 6) % 7; // Monday=0
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const items = {};
+  [...c.deliverables, ...c.gates, ...c.wbs.filter(w => w.start_date)].forEach(it => {
+    const d = (it.due_date || it.start_date || '').slice(0, 10);
+    if (d) (items[d] = items[d] || []).push(it);
+  });
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const monthName = first.toLocaleString('en', { month: 'long' }) + ' ' + y;
+  app.innerHTML = `
+    <h2>Calendar — ${monthName}</h2>
+    <div class="sub">Deliverable due dates, gates and WBS nodes</div>
+    <div class="panel">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">
+        ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<div class="small muted" style="padding:4px">${d}</div>`).join('')}
+        ${cells.map(d => d === null ? '<div></div>' : `<div style="min-height:86px;border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:4px;background:${d === now.getDate() ? 'rgba(140,175,255,.12)' : 'rgba(255,255,255,.03)'}">
+          <div class="small" style="font-weight:700">${d}</div>
+          ${(items[new Date(y, m, d).toISOString().slice(0,10)] || []).map(it => `<div class="small" style="margin-top:3px;padding:2px 5px;border-radius:5px;background:${it.scheduled_date ? 'rgba(207,169,255,.2)' : it.start_date ? 'rgba(110,168,255,.18)' : 'rgba(94,227,138,.14)'}">${it.scheduled_date ? '◆' : it.start_date ? '▦' : '•'} ${esc((it.title || it.name || '').slice(0, 26))}</div>`).join('')}
+        </div>`).join('')}
+      </div>
+    </div>`;
+}
+async function renderRoadmap() {
+  const [r, dels, readiness, sapph] = await Promise.all([api('/roadmap'), api('/deliverables'), api('/readiness'), api('/sapphases')]);
+  const phases = r.phases;
+  const pmin = phases[0].start_date, pmax = phases[phases.length - 1].end_date;
+  const span = (new Date(pmax) - new Date(pmin)) / 86400000 || 1;
+  const pct = d => Math.max(0, Math.min(100, (new Date(d) - new Date(pmin)) / 86400000 / span * 100));
+  const stateCls = { verified: 'p-green', in_review: 'p-purple', in_progress: 'p-amber', blocked: 'p-red', not_started: 'p-gray' };
+  const delByProj = {};
+  dels.forEach(d => (delByProj[d.project_id || '(none)'] = delByProj[d.project_id || '(none)'] || []).push(d));
+  const gateByPhase = {};
+  r.gates.forEach(g => {
+    const ph = phases.find(p => g.scheduled_date >= p.start_date && g.scheduled_date <= p.end_date);
+    (gateByPhase[ph ? ph.id : 'later'] = gateByPhase[ph ? ph.id : 'later'] || []).push(g);
+  });
+  app.innerHTML = `
+    <h2>Program Roadmap</h2>
+    <div class="sub">Phases on a timeline · projects as rows with their deliverables and gates · traffic light per project · MRF band per gate</div>
+    <div style="overflow-x:auto">
+      <div style="min-width:900px">
+        <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;margin-bottom:6px">
+          <div></div>
+          <div style="position:relative;height:52px">
+            ${(() => {
+              const ticks = [];
+              const d0 = new Date(pmin), d1 = new Date(pmax);
+              const cur = new Date(d0.getFullYear(), d0.getMonth(), 1);
+              while (cur <= d1) {
+                ticks.push(`<div style="position:absolute;left:${pct(cur.toISOString().slice(0,10))}%;top:34px;bottom:0;width:1px;background:rgba(255,255,255,.18)"></div>
+                  <div class="muted" style="position:absolute;left:${pct(cur.toISOString().slice(0,10))}%;top:38px;transform:translateX(2px);font-size:9.5px">${cur.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}</div>`);
+                cur.setMonth(cur.getMonth() + 1);
+              }
+              return ticks.join('');
+            })()}
+            ${phases.map(p => `<div class="gbar gphase" data-phid="${esc(p.id)}" data-start="${esc(p.start_date)}" data-end="${esc(p.end_date)}" title="${esc(p.name)} — drag to move, drag right edge to extend" style="position:absolute;left:${pct(p.start_date)}%;width:${Math.max(4, pct(p.end_date) - pct(p.start_date))}%;top:0;height:30px;background:linear-gradient(90deg,rgba(110,168,255,.22),rgba(207,169,255,.14));border:1px solid rgba(140,175,255,.35);border-radius:8px;padding:4px 6px;cursor:grab">
+              <div class="small" style="font-weight:700">${esc(p.name)}</div>
+              <div class="gresize" style="position:absolute;right:-4px;top:0;width:8px;height:100%;cursor:ew-resize;border-radius:3px;background:rgba(255,255,255,.4)"></div>
+            </div>`).join('')}
+          </div>
+        </div>
+        ${r.projects.map(p => {
+          const pd = delByProj[p.id] || [];
+          return `
+        <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.07);align-items:center">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openProject('${p.id}')" title="Open project detail">
+              <span class="tl tl-${p.light} tl-lg"></span>
+              <div><div style="font-weight:700;text-decoration:underline">${esc(p.name)}</div><div class="small muted">${esc(p.project_type)}</div></div>
+            </div>
+          </div>
+          <div style="position:relative;height:120px;background:rgba(255,255,255,.04);border-radius:8px">
+            ${(sapph.filter(sp => sp.project_id === p.id).sort((a, b) => a.start_date.localeCompare(b.start_date))).map(sp => `
+              <div class="gbar sapbar" data-pid="${esc(p.id)}" data-phase="${esc(sp.phase)}" data-start="${esc(sp.start_date)}" data-end="${esc(sp.end_date)}" title="${esc(sp.phase)} — drag to move, right edge to resize" style="position:absolute;left:${pct(sp.start_date)}%;width:${Math.max(2, pct(sp.end_date) - pct(sp.start_date))}%;top:12px;bottom:12px;border-radius:6px;background:${(() => { const order = ['Discover','Prepare','Explore','Realize','Deploy','Run','Closed']; const cur = order.indexOf(p.sap_phase); const i = order.indexOf(sp.phase); if (sp.phase === 'Closed') return '#3a3f4a'; if (sp.phase === p.sap_phase) return 'linear-gradient(90deg,#5b8def,#7f6fd0)'; return i < cur ? '#1e3a6e' : 'rgba(140,180,255,.35)'; })()};cursor:grab;border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;overflow:hidden">
+                <span style="padding:0 6px;font-size:11px;font-weight:600;color:#e8efff;line-height:1.15;white-space:normal;word-break:break-word">${esc(sp.phase)}</span>
+                <div class="gresize" style="position:absolute;right:-4px;top:0;width:8px;height:100%;cursor:ew-resize;background:rgba(255,255,255,.35)"></div>
+              </div>`).join('')}
+            </div>
+            ${pd.length ? `<span class="small muted" style="position:absolute;right:6px;top:16px">${pd.length} deliverable${pd.length > 1 ? 's' : ''}</span>` : ''}
+          </div>
+        </div>`;
+        }).join('')}
+        <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.07)">
+          <div><b>Gates</b><div class="small muted"> ◆ with MRF band </div></div>
+          <div style="position:relative;min-height:34px">
+            ${r.gates.map(g => `<span title="${esc(g.id)} ${esc(g.name)} · ${esc(g.status)} · MRF ${readiness[g.id] ? readiness[g.id].score + '/100 ' + readiness[g.id].band : ''}" style="position:absolute;left:${pct(g.scheduled_date)}%;top:6px;transform:translateX(-50%);font-size:11px;white-space:nowrap">◆ ${esc(g.name)} <span class="tl tl-${readiness[g.id] ? readiness[g.id].band : 'gray'}" style="width:9px;height:9px"></span></span>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>Milestones roadmap</h3>
+      ${r.milestones.map(m => `
+        <div style="display:grid;grid-template-columns:90px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)">
+          <div style="font-weight:700;color:#8ab8ff">[${esc(m.label)}]</div>
+          <div><b>${esc(m.title)}</b>${m.details ? `<div class="small muted">${esc(m.details)}</div>` : ''}</div>
+        </div>`).join('')}
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>Program traffic light: ${lightDot(r.program_light, true)} ${lightPicker(r.program_light, 'setProgramLight')}</h3>
+      <h3 style="margin-top:12px">Workstreams</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${r.workstreams.map(w => `<span class="pill p-purple">${esc(w.name)} (${esc(w.lead)})</span>`).join('')}</div>
+    </div>`;
+  // drag/resize bars
+  const dayMs = 86400000;
+  const toDate = off => new Date(new Date(pmin).getTime() + off * span * dayMs).toISOString().slice(0, 10);
+  document.querySelectorAll('.gbar').forEach(bar => {
+    const onDown = e => {
+      const pt = e.touches ? e.touches[0] : e;
+      e.preventDefault();
+      const resize = (e.target.classList && e.target.classList.contains('gresize'));
+      const track = bar.parentElement.getBoundingClientRect();
+      const startX = pt.clientX;
+      const origStart = bar.dataset.start, origEnd = bar.dataset.end;
+      const origLeft = parseFloat(bar.style.left), origWidth = parseFloat(bar.style.width);
+      const move = ev => {
+        const pt = ev.touches ? ev.touches[0] : ev;
+        const frac = (pt.clientX - startX) / track.width * 100;
+        if (resize) {
+          bar.style.width = Math.max(2, origWidth + frac) + '%';
+        } else {
+          bar.style.left = Math.max(0, Math.min(100 - origWidth, origLeft + frac)) + '%';
+        }
+      };
+      const up = async ev => {
+        const pt = ev.changedTouches ? ev.changedTouches[0] : ev;
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        document.removeEventListener('touchmove', move);
+        document.removeEventListener('touchend', up);
+        const frac = (pt.clientX - startX) / track.width * 100;
+        let ns = origStart, ne = origEnd;
+        if (resize) {
+          ne = toDate((origEnd ? (new Date(origEnd) - new Date(pmin)) / dayMs / span : 0) + frac / 100);
+        } else {
+          const days = Math.round(frac / 100 * span);
+          ns = new Date(new Date(origStart).getTime() + days * dayMs).toISOString().slice(0, 10);
+          ne = new Date(new Date(origEnd).getTime() + days * dayMs).toISOString().slice(0, 10);
+        }
+        if (ns === origStart && ne === origEnd) return;
+        if (bar.dataset.phase) {
+          await api('/sapphases/update', 'POST', { project_id: bar.dataset.pid, phase: bar.dataset.phase, start_date: ns, end_date: ne });
+          toast(`${bar.dataset.phase}: ${ns} → ${ne}`);
+        } else if (bar.dataset.pid) {
+          const p = r.projects.find(x => x.id === bar.dataset.pid);
+          await api('/program/projects/update', 'POST', { id: p.id, name: p.name, program_phase_id: p.program_phase_id, sap_phase: p.sap_phase, start_date: ns, end_date: ne, status: p.status, light: p.light, project_type: p.project_type });
+          toast(`${p.id}: ${ns} → ${ne}`);
+        } else if (bar.dataset.phid) {
+          const ph = phases.find(x => x.id === bar.dataset.phid);
+          await api('/program/phases/update', 'POST', { id: ph.id, name: ph.name, start_date: ns, end_date: ne });
+          toast(`${ph.name}: ${ns} → ${ne}`);
+        }
+        render();
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+      document.addEventListener('touchmove', move, { passive: false });
+      document.addEventListener('touchend', up);
+    };
+    bar.addEventListener('mousedown', onDown);
+    bar.addEventListener('touchstart', onDown, { passive: false });
+  });
+}
+function trDate(s) { return new Date(s + 'T12:00:00'); }
+function trMonday(d) { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); }
+function trWeek() { if (!window._trWeek) window._trWeek = trMonday(new Date()); return window._trWeek; }
+function trShift(days) { const d = trDate(trWeek()); d.setDate(d.getDate() + days); window._trWeek = trMonday(d); render(); }
+function trAddProject(pid) {
+  const k = 'hub_time_week_' + trWeek();
+  const a = JSON.parse(localStorage.getItem(k) || '[]');
+  if (!a.includes(pid)) a.push(pid);
+  localStorage.setItem(k, JSON.stringify(a));
+  render();
+}
+async function logDay(day, projectId) {
+  const owner = window._chatUser || prompt('Your name:', '');
+  if (owner === null || owner === undefined || owner === '') return;
+  window._chatUser = owner;
+  const hours = prompt('Hours on ' + day + ':', '1');
+  if (!hours || isNaN(parseFloat(hours))) return;
+  const res = await api('/timereport/add', 'POST', { deliverable_id: '', owner, hours: parseFloat(hours), week: trMonday(trDate(day)), day, project_id: projectId });
+  if (res.ok) { toast('Logged ' + hours + ' h on ' + projectId + ' (' + day + ')'); render(); }
+  else toast(res.error || 'Error', 'err');
+}
+async function renderExpenses() {
+  const [ex, progs] = await Promise.all([api('/expenses'), api('/program')]);
+  const projs = progs.projects;
+  const total = ex.reduce((s, e) => s + e.amount, 0);
+  const byCat = {};
+  ex.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+  app.innerHTML = `
+    <h2>Expenses</h2>
+    <div class="sub">Separate from time — attach the report as an appendix to invoices.</div>
+    <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">
+      <div class="card"><div class="kpi">${ex.length}</div><div class="lbl">Entries</div></div>
+      <div class="card"><div class="kpi">${total.toFixed(2)} €</div><div class="lbl">Total</div></div>
+      ${Object.entries(byCat).map(([c, v]) => `<div class="card"><div class="kpi">${v.toFixed(2)} €</div><div class="lbl">${esc(c)}</div></div>`).join('')}
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <h3>Add expense</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <span><label class="small muted">Date</label><input type="date" id="exDate" style="width:150px"></span>
+        <span><label class="small muted">Project</label><select id="exProj" style="width:180px">${projs.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></span>
+        <span><label class="small muted">Category</label><select id="exCat" style="width:140px">${['travel','meals','hotel','software','other'].map(c => `<option>${c}</option>`).join('')}</select></span>
+        <span><label class="small muted">Amount</label><input id="exAmt" inputmode="decimal" placeholder="0.00" style="width:90px"></span>
+        <span><label class="small muted">Currency</label><input id="exCur" value="EUR" style="width:60px"></span>
+        <span><label class="small muted">Description</label><input id="exDesc" style="width:220px"></span>
+        <button class="btn" onclick="addExpense()">Add</button>
+        <button class="btn ghost" onclick="expenseReport()">📄 Expense report (invoice appendix)</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Entries</h3>
+      <table><tr><th>ID</th><th>Date</th><th>Project</th><th>Category</th><th>Description</th><th>Amount</th><th></th></tr>
+      ${ex.map(e => `<tr><td class="small">${esc(e.id)}</td><td class="small">${esc(e.date)}</td><td class="small">${esc((projs.find(p => p.id === e.project_id) || {}).name || e.project_id)}</td><td>${esc(e.category)}</td><td>${esc(e.description)}</td><td>${e.amount.toFixed(2)} ${esc(e.currency)}</td><td><button class="kb-del" onclick="delExpense('${e.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="7" class="muted">No expenses yet.</td></tr>'}
+      </table>
+    </div>`;
+}
+async function addExpense() {
+  const res = await api('/expenses/add', 'POST', {
+    owner: window._tsOwner || window._chatUser || 'A. Reinhart',
+    date: document.getElementById('exDate').value || new Date().toISOString().slice(0, 10),
+    project_id: document.getElementById('exProj').value,
+    category: document.getElementById('exCat').value,
+    amount: parseFloat(document.getElementById('exAmt').value || '0'),
+    currency: document.getElementById('exCur').value,
+    description: document.getElementById('exDesc').value
+  });
+  if (res.ok) { toast('Expense ' + res.id + ' added'); render(); } else toast(res.error || 'Error', 'err');
+}
+async function delExpense(id) {
+  await api('/expenses/delete', 'POST', { id });
+  render();
+}
+async function expenseReport() {
+  const ex = await api('/expenses');
+  const progs = await api('/program');
+  const total = ex.reduce((s, e) => s + e.amount, 0);
+  const byProj = {};
+  ex.forEach(e => { const k = e.project_id || '(none)'; (byProj[k] = byProj[k] || []).push(e); });
+  document.getElementById('modal').innerHTML = `
+    <h3>Expense report — invoice appendix</h3>
+    <div class="small muted">Generated ${new Date().toISOString().slice(0, 10)} · ${ex.length} entries · total ${total.toFixed(2)} EUR</div>
+    ${Object.entries(byProj).map(([pid, items]) => {
+      const p = progs.projects.find(x => x.id === pid);
+      const sub = items.reduce((s, e) => s + e.amount, 0);
+      return `<h4 style="margin-top:12px">${esc(p ? p.name : pid)} — ${sub.toFixed(2)} EUR</h4>
+      <table><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th></tr>
+      ${items.map(e => `<tr><td class="small">${esc(e.date)}</td><td>${esc(e.category)}</td><td>${esc(e.description)}</td><td>${e.amount.toFixed(2)} ${esc(e.currency)}</td></tr>`).join('')}</table>`;
+    }).join('')}
+    <div class="row" style="margin-top:12px"><button class="btn" onclick="window.print()">Print / Save PDF</button><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+
+async function renderTimeReport() {
+  const t = await api('/timereport');
+  const progs = await api('/program');
+  const setts = await api('/settings');
+  const budget = parseFloat((setts.program_settings || []).find(s => s.key === 'time_budget_monthly_hours')?.value || 0) || 0;
+  const owner = window._tsOwner || window._chatUser || 'A. Reinhart';
+  const monthPrefix = new Date().toISOString().slice(0, 7);
+  let monthMin = 0;
+  t.entries.forEach(e => { if ((e.day || e.week || '').startsWith(monthPrefix) && e.owner === owner) monthMin += e.hours * 60; });
+  const view = window._tsView || 'week';
+  const now = new Date();
+  const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + (window._tsWeekOff || 0) * 7);
+  const days = []; for (let d = 0; d < 7; d++) { const x = new Date(monday); x.setDate(monday.getDate() + d); days.push(x); }
+  const dayISO = x => x.toISOString().slice(0, 10);
+  const weekStart = dayISO(days[0]);
+  const fmt = mins => { mins = Math.round(mins * 60); return Math.floor(mins / 60) + ':' + String(mins % 60).padStart(2, '0'); };
+  const myEntries = t.entries.filter(e => e.owner === owner && (e.week === weekStart || (e.day && dayISO(days[0]) <= e.day && e.day <= dayISO(days[6]))));
+  const rows = {};
+  if (window._tsNewRow) rows[window._tsNewRow] = {};
+  myEntries.forEach(e => { const k = e.project_id || '(none)'; rows[k] = rows[k] || {}; });
+  const projects = progs.projects;
+  const cellMin = {};
+  myEntries.forEach(e => { if (e.day) cellMin[e.project_id + '|' + e.day] = (cellMin[e.project_id + '|' + e.day] || 0) + e.hours * 60; });
+  const rowTot = {}, dayTot = {}, grand = 0;
+  myEntries.forEach(e => { if (e.day) { rowTot[e.project_id] = (rowTot[e.project_id] || 0) + e.hours * 60; dayTot[e.day] = (dayTot[e.day] || 0) + e.hours * 60; grand += e.hours * 60; } });
+  const wstatus = (t.week_status || []).find(w => w.owner === owner && w.week === weekStart);
+  const status = wstatus ? wstatus.status : 'draft';
+  const pending = (t.week_status || []).filter(w => w.status === 'submitted').length;
+  const periodLabel = ((setts.program_settings || []).find(s => s.key === 'time_period_label') || {}).value || 'week';
+  app.innerHTML = `
+    <h2>Time</h2>
+    <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">
+      <div class="card"><div class="kpi">${fmt(grand)}</div><div class="lbl">This week (${esc(owner)})</div></div>
+      <div class="card"><div class="kpi">${fmt(Object.values(t.by_owner).reduce((s, o) => s + o.hours * 60, 0))}</div><div class="lbl">All time — all users</div></div>
+      <div class="card"><div class="kpi">${Object.keys(t.by_project).length}</div><div class="lbl">Projects with hours</div></div>
+      <div class="card"><div class="kpi">${budget ? budget + ' h' : '—'}</div><div class="lbl">Monthly budget (Settings → Time reporting)</div></div>
+      ${budget ? `<div class="card"><div class="kpi">${fmt(monthMin)} / ${budget} h</div><div class="lbl">Budget usage this month</div></div>` : ''}
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+      ${['Timesheet', 'Pending approval', 'Unsubmitted', 'Approved'].map((s, i) => `<button class="btn ${i === 0 ? '' : 'ghost'}">${s}${s === 'Pending approval' ? ` (${pending})` : ''}</button>`).join('')}
+      <span style="flex:1"></span>
+      <button class="btn ghost" onclick="window._tsWeekOff=(${(window._tsWeekOff || 0)} - 1);render()">←</button>
+      <span class="small">${periodLabel === 'date'
+        ? `This week: ${days[0].toLocaleDateString('en-GB', { day: '2-digit' })} – ${days[6].toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`
+        : `Week ${isoWeek(days[0])} (${days[0].toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} – ${days[6].toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})`}</span>
+      <button class="btn ghost" onclick="window._tsWeekOff=(${(window._tsWeekOff || 0)} + 1);render()">→</button>
+      <select onchange="window._tsView=this.value;render()">
+        <option value="day" ${view === 'day' ? 'selected' : ''}>Day</option>
+        <option value="week" ${view === 'week' ? 'selected' : ''}>Week</option>
+        <option value="calendar" ${view === 'calendar' ? 'selected' : ''}>Calendar</option>
+      </select>
+      <span class="small muted">as</span><input id="tsOwner" value="${esc(owner)}" style="width:140px" onchange="window._tsOwner=this.value;render()">
+    </div>
+    <div class="panel" style="overflow-x:auto">
+      <table style="min-width:900px">
+        <tr>
+          <th>Project / Task</th><th></th>
+          ${days.map(d => `<th style="${dayISO(d) === dayISO(now) ? 'color:#8ab8ff' : ''}">${d.toLocaleDateString('en-GB', { weekday: 'short' })} ${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</th>`).join('')}
+          <th>Total</th><th></th>
+        </tr>
+        ${Object.keys(rows).map(pid => {
+          const p = projects.find(x => x.id === pid);
+          return `<tr>
+            <td><b>${esc(p ? p.name : pid)}</b><div class="small muted">${esc(p ? p.project_type : '')}</div></td>
+            <td><button class="kb-del" title="Notes">🗒</button></td>
+            ${days.map(d => `<td style="text-align:center;min-width:64px" data-pid="${pid}" data-day="${dayISO(d)}"><input class="tsinp" data-pid="${pid}" data-day="${dayISO(d)}" inputmode="decimal" placeholder="·" value="" style="width:52px;text-align:center;padding:2px 4px;background:transparent;border:none;color:var(--text)"></td>`).join('')}
+            <td style="text-align:right"><b>${fmt(rowTot[pid] || 0)}</b></td>
+            <td><button class="kb-del" title="Delete row" onclick="tsDelRow('${pid}')">✕</button></td>
+          </tr>`;}).join('') || '<tr><td colspan="10" class="muted">No rows yet — use + Add row.</td></tr>'}
+        <tr style="border-top:2px solid var(--glass-border)">
+          <td><b>Total</b></td><td></td>
+          ${days.map(d => `<td style="text-align:center"><b>${fmt(dayTot[dayISO(d)] || 0)}</b></td>`).join('')}
+          <td style="text-align:right"><b>${fmt(grand)}</b></td><td></td>
+        </tr>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+      <button class="btn ghost" onclick="tsAddRow()">+ Add row</button>
+      <button class="btn ghost" onclick="tsSave('draft')">Save</button>
+      <button class="btn" onclick="tsSave('submitted')">Submit week for approval</button>
+      <span class="small muted">Status: <b>${esc(status)}</b></span>
+    </div>`;
+  document.querySelectorAll('.tsinp').forEach(inp => {
+    const v = cellMin[inp.dataset.pid + '|' + inp.dataset.day];
+    if (v) inp.value = fmt(v);
+    inp.addEventListener('focus', () => inp.select());
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tsSaveCell(inp); } });
+    inp.addEventListener('change', () => tsSaveCell(inp));
+  });
+}
+function isoWeek(d) {
+  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = x.getUTCDay() || 7;
+  x.setUTCDate(x.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
+  return Math.ceil((((x - yearStart) / 86400000) + 1) / 7);
+}
+function tsMonday() {
+  const now = new Date();
+  const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + (window._tsWeekOff || 0) * 7);
+  return monday.toISOString().slice(0, 10);
+}
+async function tsSaveCell(inp) {
+  const v = inp.value.trim().replace(',', '.');
+  const pid = inp.dataset.pid, day = inp.dataset.day;
+  const t = await api('/timereport');
+  for (const e of t.entries.filter(e => e.project_id === pid && e.day === day && e.week === tsMonday() && (e.owner === (window._tsOwner || window._chatUser || 'A. Reinhart')))) {
+    await api('/timereport/delete', 'POST', { id: e.id });
+  }
+  if (v && !isNaN(parseFloat(v))) {
+    const res = await api('/timereport/add', 'POST', { deliverable_id: '', owner: window._tsOwner || window._chatUser || 'A. Reinhart', hours: parseFloat(v), week: tsMonday(), project_id: pid, day, note: '' });
+    if (res.ok) toast('Logged ' + v + ' h'); else toast(res.error || 'Error', 'err');
+  }
+  render();
+}
+async function tsDelRow(pid) {
+  if (!confirm('Delete all entries for ' + pid + ' this week?')) return;
+  const t = await api('/timereport');
+  for (const e of t.entries.filter(e => e.project_id === pid && e.week === tsMonday())) {
+    await api('/timereport/delete', 'POST', { id: e.id });
+  }
+  toast('Row deleted'); render();
+}
+async function tsAddRow() {
+  const progs = await api('/program');
+  const ws = await api('/workstreams');
+  document.getElementById('modal').innerHTML = `
+    <h3>+ Add row</h3>
+    <label>Project</label><select id="arProj" style="width:100%">${progs.projects.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select>
+    <label>Stream (optional)</label><select id="arStream" style="width:100%"><option value="">— none —</option>${ws.map(w => `<option value="${esc(w.name)}">${esc(w.name)}</option>`).join('')}</select>
+    <div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="tsAddRowGo()">Add</button></div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+async function tsAddRowGo() {
+  window._tsNewRow = document.getElementById('arProj').value;
+  window._tsNewStream = document.getElementById('arStream').value;
+  closeModal(); toast('Row added — click a day cell to log time'); render();
+}
+async function tsSave(status) {
+  await api('/timereport/weekstatus', 'POST', { owner: window._tsOwner || window._chatUser || 'A. Reinhart', week: tsMonday(), status });
+  toast(status === 'submitted' ? 'Week submitted for approval' : 'Draft saved');
+  render();
+}
+async function renderAgents() {
+  const agents = await api('/agents');
+  app.innerHTML = `
+    <h2>AI Agents</h2>
+    <div class="sub">Governed agents wired into every gate — each with a named owner, grounding contract, and accuracy gate. Configure them in ☰ → AI agents.</div>
+    <div style="margin-bottom:14px"><button class="btn ghost" onclick="window.open('/api/agents/export','_blank')">⇪ Export registry (JSON for Mistral)</button></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      ${agents.map(a => `
+        <div class="card" style="${a.enabled ? '' : 'opacity:.45'}">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong>${esc(a.name)}</strong>
+            ${pill(a.enabled ? 'Active' : 'Disabled', a.enabled ? 'p-green' : 'p-gray')}
+          </div>
+          <div class="small muted" style="margin:6px 0">${esc(a.role)}</div>
+          <div class="small">Owner: ${esc(a.owner)} · Accuracy gate: ≥${a.accuracy_gate}%</div>
+          <div class="small muted">Grounding: ${esc(a.grounding)}</div>
+          <div style="margin-top:8px"><button class="btn ghost" onclick="runAgent('${esc(a.name)}')">✦ Run in Mistral</button></div>
+        </div>`).join('')}
+    </div>`;
+}
+async function renderAgentsSettings() {
+  const agents = await api('/agents');
+  return `
+      <div class="panel">
+        <h3>AI agents — governance configuration</h3>
+        <div class="small muted" style="margin-bottom:12px">Every agent ships governed: named owner, grounding contract, refusal rules, accuracy gate. Disable an agent to take it out of gate preparation.</div>
+        <table><tr><th>Agent</th><th>Role</th><th>Owner</th><th>Grounding sources</th><th>Accuracy gate %</th><th>Enabled</th></tr>
+        ${agents.map(a => `<tr>
+          <td><strong>${esc(a.name)}</strong></td>
+          <td><input value="${esc(a.role)}" onchange="updAgent('${esc(a.name)}', 'role', this.value)"></td>
+          <td><input value="${esc(a.owner)}" onchange="updAgent('${esc(a.name)}', 'owner', this.value)"></td>
+          <td><input value="${esc(a.grounding)}" style="min-width:200px" onchange="updAgent('${esc(a.name)}', 'grounding', this.value)"></td>
+          <td><input type="number" value="${a.accuracy_gate}" style="width:70px" onchange="updAgent('${esc(a.name)}', 'accuracy_gate', this.value)"></td>
+          <td><input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="updAgent('${esc(a.name)}', 'enabled', this.checked)"></td>
+        </tr>`).join('')}
+        </table>
+        <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+          <input id="newAgentName" placeholder="New agent name">
+          <input id="newAgentRole" placeholder="Role">
+          <input id="newAgentOwner" placeholder="Owner">
+          <input id="newAgentGrounding" placeholder="Grounding sources">
+          <input id="newAgentGate" type="number" value="90" style="width:80px" title="Accuracy gate %">
+          <button class="btn ghost" onclick="addAgent()">+ Add agent</button>
+        </div>
+        <div id="agentStatus" class="small" style="margin-top:8px;color:var(--green)"></div>
+      </div>`;
+}
+async function updAgent(name, field, value) {
+  const agents = await api('/agents');
+  const a = agents.find(x => x.name === name);
+  const body = { name, role: a.role, owner: a.owner, grounding: a.grounding, accuracy_gate: a.accuracy_gate, enabled: a.enabled };
+  body[field] = field === 'enabled' ? value : (field === 'accuracy_gate' ? parseFloat(value) : value);
+  const res = await api('/agents/update', 'POST', body);
+  const out = document.getElementById('agentStatus');
+  if (out) out.textContent = res.ok ? 'Saved ' + name : 'Error';
+  loadModules();
+}
+async function addAgent() {
+  const res = await api('/agents/add', 'POST', {
+    name: document.getElementById('newAgentName').value,
+    role: document.getElementById('newAgentRole').value,
+    owner: document.getElementById('newAgentOwner').value,
+    grounding: document.getElementById('newAgentGrounding').value,
+    accuracy_gate: parseFloat(document.getElementById('newAgentGate').value || '90'),
+  });
+  if (res.ok) render();
+  else alert(res.error || 'Error');
+}
+const TASK_APPS = [
+  ['google_tasks', 'Google Tasks', 'OAuth token with tasks scope; tasklist id optional (default list)'],
+  ['ms_todo', 'Microsoft To Do', 'Microsoft Graph token with Tasks.ReadWrite; list id (default = default list)'],
+  ['todoist', 'Todoist', 'API token from todoist.com; project id optional'],
+];
+async function renderTaskAppsSettings() {
+  const apps = await api('/taskapps');
+  const byP = Object.fromEntries(apps.map(a => [a.provider, a]));
+  return `
+      <div class="panel" style="margin-top:16px">
+        <h3>Task apps — send deliverables to external task managers</h3>
+        <div class="small muted" style="margin-bottom:12px">Enable a provider and paste its API token. Deliverables can then be pushed from the Register via the ⋮ row menu. Tokens are stored locally in the Hub database only.</div>
+        ${TASK_APPS.map(([p, label, hint]) => `
+          <div style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin-bottom:10px">
+            <label style="font-weight:700">${label}</label>
+            <div class="small muted" style="margin:4px 0 8px">${hint}</div>
+            <label class="small muted"><input type="checkbox" id="ta_${p}_en" ${byP[p] && byP[p].enabled ? 'checked' : ''} onchange="saveTaskApp('${p}')"> Enabled</label>
+            <input id="ta_${p}_token" type="password" placeholder="API token" style="width:100%;margin-top:6px" onblur="saveTaskApp('${p}')">
+            <input id="ta_${p}_list" placeholder="List / project ID (optional)" style="width:100%;margin-top:6px" value="${esc((byP[p] && byP[p].list_id) || '')}" onblur="saveTaskApp('${p}')">
+          </div>`).join('')}
+        <div id="taStatus" class="small" style="margin-top:6px;color:var(--green)"></div>
+      </div>`;
+}
+async function saveTaskApp(provider) {
+  await api('/taskapps/save', 'POST', {
+    provider,
+    enabled: document.getElementById('ta_' + provider + '_en').checked,
+    token: document.getElementById('ta_' + provider + '_token').value,
+    list_id: document.getElementById('ta_' + provider + '_list').value,
+  });
+  document.getElementById('taStatus').textContent = 'Saved ' + provider;
+}
+async function sendToTaskApp(provider, delivId) {
+  const res = await api('/taskapps/send', 'POST', { provider, deliverable_id: delivId });
+  if (res.ok) alert('Sent to ' + provider + ' (remote id: ' + (res.remote.id || 'ok') + ')');
+  else alert('Send failed: ' + (res.error || 'unknown error'));
+}
+async function renderUsersSettings(projects) {
+  const users = await api('/users');
+  const projOptions = projects.map(p => `<option value="${p.id}">${esc(p.id)} ${esc(p.name)}</option>`).join('');
+  return `
+      <div class="panel">
+        <h3>Users</h3>
+        <table><tr><th>Username</th><th>Name</th><th>Email</th><th>Phone</th><th>Project</th><th>Skills</th></tr>
+        ${users.map(u => `<tr>
+          <td class="small">${esc(u.username)}</td>
+          <td><input value="${esc(u.name)}" onchange="updUser('${u.username}', 'name', this.value)"></td>
+          <td><input value="${esc(u.email)}" onchange="updUser('${u.username}', 'email', this.value)"></td>
+          <td><input value="${esc(u.phone)}" onchange="updUser('${u.username}', 'phone', this.value)"></td>
+          <td><select onchange="updUser('${u.username}', 'project_id', this.value)"><option value="">—</option>${projOptions.replace(`value="${u.project_id}"`, `value="${u.project_id}" selected`)}</select></td>
+          <td><input value="${esc(u.skills || '')}" placeholder="SAP, SQL, OCM…" onchange="updUser('${u.username}', 'skills', this.value)"></td>
+        </tr>`).join('')}
+        </table>
+        <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+          <input id="nuUsername" placeholder="username"><input id="nuName" placeholder="name">
+          <input id="nuEmail" placeholder="email"><input id="nuPhone" placeholder="phone">
+          <select id="nuProject"><option value="">— no project —</option>${projOptions}</select>
+          <button class="btn ghost" onclick="addUser()">+ Add user</button>
+        </div>
+        <div id="userStatus" class="small" style="margin-top:8px;color:var(--green)"></div>
+      </div>`;
+}
+async function updUser(username, field, value) {
+  const users = await api('/users');
+  const u = users.find(x => x.username === username);
+  await api('/users/update', 'POST', { username, name: u.name, email: u.email, phone: u.phone, project_id: u.project_id, skills: u.skills, [field]: value });
+  document.getElementById('userStatus').textContent = 'Saved ' + username;
+}
+async function addUser() {
+  const res = await api('/users/add', 'POST', {
+    username: document.getElementById('nuUsername').value,
+    name: document.getElementById('nuName').value,
+    email: document.getElementById('nuEmail').value,
+    phone: document.getElementById('nuPhone').value,
+    project_id: document.getElementById('nuProject').value,
+  });
+  if (res.ok) render(); else alert(res.error || 'Error');
+}
+async function renderErrorLog() {
+  const errs = await api('/errors');
+  return `
+      <div class="panel" style="margin-top:16px">
+        <h3>Error log (readable in ☰ → App store)</h3>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <input id="gdriveToken" type="password" placeholder="Google Drive OAuth token (drive.file scope) — optional, for sync" style="flex:1;min-width:240px">
+          <button class="btn ghost" onclick="syncErrors()">⇪ Sync log to Google Drive</button>
+          <span id="errSync" class="small"></span>
+        </div>
+        <table><tr><th>ID</th><th>Time</th><th>Level</th><th>Source</th><th>Message</th><th>Synced</th></tr>
+        ${errs.slice(0, 30).map(e => `<tr><td class="small">${e.id}</td><td class="small">${esc(e.ts)}</td><td><span class="pill ${e.level==='ERROR'?'p-red':'p-amber'}">${esc(e.level)}</span></td><td class="small">${esc(e.source)}</td><td class="small" title="${esc(e.detail)}">${esc(e.message)}</td><td>${e.synced ? '✓' : '—'}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No errors logged.</td></tr>'}
+        </table>
+      </div>`;
+}
+async function syncErrors() {
+  const out = document.getElementById('errSync');
+  out.textContent = 'Syncing…'; out.style.color = 'var(--muted)';
+  const res = await api('/errors/sync', 'POST', { token: document.getElementById('gdriveToken').value });
+  if (res.ok) { out.textContent = `Synced ${res.synced} entries → Drive file ${res.file || ''}`; out.style.color = 'var(--green)'; }
+  else { out.textContent = 'Error: ' + (res.error || 'unknown'); out.style.color = 'var(--red)'; }
+  render();
+}
+const SETTINGS_TABS = [
+  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['users', 'Users'], ['mistral', 'Mistral'], ['tabs', 'My tabs'], ['time', 'Time reporting'],
+];
+async function renderSettings() {
+  const mods = await api('/modules');
+  const prog = await api('/program');
+  const settings = await api('/settings');
+  const agentsPanel = settingsTab === 'agents' ? await renderAgentsSettings() : '';
+  const taskappsPanel = settingsTab === 'store' ? await renderTaskAppsSettings() : '';
+  const usersPanel = settingsTab === 'users' ? await renderUsersSettings(prog.projects) : '';
+  const errorLogPanel = settingsTab === 'store' ? await renderErrorLog() : '';
+  const mistralPanel = settingsTab === 'mistral' ? await renderMistralSettings() : '';
+  const rm = prog.report_on || 'deliverables';
+  const SAP_PHASES = ['Discover', 'Prepare', 'Explore', 'Realize', 'Deploy', 'Run'];
+  app.innerHTML = `
+    <h2>Settings</h2>
+    <div class="sub">Program configuration, integrations &amp; app store</div>
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+      ${SETTINGS_TABS.map(([k, l]) => `<button class="btn ${settingsTab === k ? '' : 'ghost'}" onclick="settingsTab='${k}';render()">${l}</button>`).join('')}
+    </div>
+    ${settingsTab === 'store' ? `
+      <div class="panel" style="margin-bottom:16px"><h3>Time reporting level</h3>
+        <div class="small muted" style="margin-bottom:8px">Choose whether hours are reported per deliverable or per project / sub-project.</div>
+        <select onchange="setReportMode(this.value)"><option value="deliverables" ${rm === 'deliverables' ? 'selected' : ''}>Deliverables</option><option value="projects" ${rm === 'projects' ? 'selected' : ''}>Projects / sub-projects</option></select>
+      </div>
+      <div class="panel"><h3>App store — enable or disable modules</h3>
+        <table><tr><th>Module</th><th>Enabled</th></tr>
+        ${mods.map(m => `<tr><td>${esc(m.label)}</td>
+          <td><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="toggleModule('${m.name}', this.checked)"></td></tr>`).join('')}
+        </table>
+      </div>
+      ${taskappsPanel}
+      ${errorLogPanel}` : ''}
+    ${settingsTab === 'import' ? `
+      <div class="grid two-col">
+        <div class="panel">
+          <h3>Import deliverables (.xlsx)</h3>
+          <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, workstream_id, owner, gate_id, state, due_date, evidence_ref, dependency_ids, grade, responsible_user, project_id. First row = header.</div>
+          <input type="file" id="impDeliv" accept=".xlsx">
+          <div style="margin-top:10px"><button class="btn" onclick="importXlsx('deliverables')">Import deliverables</button></div>
+          <div id="impDelivResult" class="small" style="margin-top:8px"></div>
+        </div>
+        <div class="panel">
+          <h3>Import decisions (.xlsx)</h3>
+          <div class="small muted" style="margin-bottom:10px">Columns: id, title, description, owner, raised_date, needed_by, status, blocks. First row = header.</div>
+          <input type="file" id="impDec" accept=".xlsx">
+          <div style="margin-top:10px"><button class="btn" onclick="importXlsx('decisions')">Import decisions</button></div>
+          <div id="impDecResult" class="small" style="margin-top:8px"></div>
+        </div>
+      </div>` : ''}
+    ${settingsTab === 'program' ? `
+      <div class="panel" style="margin-bottom:16px">
+        <h3>Program phases</h3>
+        <table><tr><th>ID</th><th>Phase</th><th>Start</th><th>End</th></tr>
+        ${prog.phases.map(p => `<tr><td class="small">${esc(p.id)}</td>
+          <td><input value="${esc(p.name)}" onchange="updPhase('${p.id}', this.value, null, null)"></td>
+          <td><input type="date" value="${esc(p.start_date)}" onchange="updPhase('${p.id}', null, this.value, null)"></td>
+          <td><input type="date" value="${esc(p.end_date)}" onchange="updPhase('${p.id}', null, null, this.value)"></td></tr>`).join('')}
+        </table>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <input id="newPhaseName" placeholder="New phase name"><input id="newPhaseStart" type="date"><input id="newPhaseEnd" type="date">
+          <button class="btn ghost" onclick="addPhase()">+ Add phase</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Projects (waves / rollouts)</h3>
+        <table><tr><th>ID</th><th>Project</th><th>Program phase</th><th>SAP Activate phase</th><th>Start</th><th>End</th><th>Status</th><th>Light</th><th>Type</th></tr>
+        ${prog.projects.map(p => `<tr><td class="small">${esc(p.id)}</td>
+          <td><input value="${esc(p.name)}" onchange="updProject('${p.id}', this.value, null, null, null, null, null, null)"></td>
+          <td><select onchange="updProject('${p.id}', null, this.value, null, null, null, null, null)">
+            ${prog.phases.map(ph => `<option value="${ph.id}" ${ph.id === p.program_phase_id ? 'selected' : ''}>${esc(ph.name)}</option>`).join('')}</select></td>
+          <td><select onchange="updProject('${p.id}', null, null, this.value, null, null, null, null)">
+            ${SAP_PHASES.map(s => `<option ${s === p.sap_phase ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+          <td><input type="date" value="${esc(p.start_date)}" onchange="updProject('${p.id}', null, null, null, this.value, null, null, null)"></td>
+          <td><input type="date" value="${esc(p.end_date)}" onchange="updProject('${p.id}', null, null, null, null, this.value, null, null)"></td>
+          <td><select onchange="updProject('${p.id}', null, null, null, null, null, this.value, null)">
+            ${['planned','active','completed'].map(s => `<option ${s === p.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+          <td><select onchange="updProject('${p.id}', null, null, null, null, null, null, this.value)">
+            ${['green','amber','red'].map(s => `<option ${s === p.light ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+          <td><select onchange="updProjectType('${p.id}', this.value)">
+            ${['template','rollout','cell'].map(s => `<option ${s === p.project_type ? 'selected' : ''}>${s}</option>`).join('')}</select></td></tr>`).join('')}
+        </table>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+          <input id="newPrjName" placeholder="New project name">
+          <select id="newPrjPhase">${prog.phases.map(ph => `<option value="${ph.id}">${esc(ph.name)}</option>`).join('')}</select>
+          <select id="newPrjSap">${SAP_PHASES.map(s => `<option>${s}</option>`).join('')}</select>
+          <input id="newPrjStart" type="date"><input id="newPrjEnd" type="date">
+          <select id="newPrjLight">${['green','amber','red'].map(s => `<option>${s}</option>`).join('')}</select>
+          <button class="btn ghost" onclick="addProject()">+ Add project</button>
+        </div>
+      </div>` : ''}
+    ${settingsTab === 'repo' ? `
+      <div class="panel" style="max-width:560px">
+        <h3>Document repository integration</h3>
+        <div class="small muted" style="margin-bottom:12px">Connect the Hub to Microsoft Teams so evidence citations resolve to live documents.</div>
+        <label class="small muted"><input type="checkbox" id="repoEnabled" ${prog.doc_repo && prog.doc_repo.enabled ? 'checked' : ''} onchange="saveRepo()"> Enabled</label>
+        <label class="small muted" style="display:block;margin-top:10px">Provider</label>
+        <select id="repoProvider" style="width:100%" onchange="saveRepo()">
+          <option value="teams" ${prog.doc_repo && prog.doc_repo.provider === 'teams' ? 'selected' : ''}>Microsoft Teams</option>
+          <option value="sharepoint" ${prog.doc_repo && prog.doc_repo.provider === 'sharepoint' ? 'selected' : ''}>SharePoint</option>
+        </select>
+        <label class="small muted" style="display:block;margin-top:10px">Teams incoming webhook URL</label>
+        <input id="repoWebhook" style="width:100%" placeholder="https://outlook.office.com/webhook/..." value="${esc((prog.doc_repo && prog.doc_repo.webhook_url) || '')}" onblur="saveRepo()">
+        <div id="repoStatus" class="small" style="margin-top:10px;color:var(--green)"></div>
+      </div>` : ''}
+    ${settingsTab === 'agents' ? agentsPanel : ''}
+    ${settingsTab === 'users' ? usersPanel : ''}
+    ${settingsTab === 'mistral' ? mistralPanel : ''}
+    ${settingsTab === 'time' ? `
+      <div class="panel" style="max-width:480px">
+        <h3>Time reporting</h3>
+        <label>Monthly budget (hours per user)</label>
+        <input id="budgetHours" type="number" step="0.5" min="0" value="${esc(((settings.program_settings || []).find(s => s.key === 'time_budget_monthly_hours') || {}).value || '')}" style="width:120px">
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="saveBudget()">Save budget</button><span class="small muted" id="budgetStatus"></span></div>
+        <label style="margin-top:14px;display:block">Period label on timesheet</label>
+        <select id="periodLabel" style="width:200px">
+          <option value="week" ${((settings.program_settings || []).find(s => s.key === 'time_period_label') || {}).value !== 'date' ? 'selected' : ''}>Week number (e.g. Week 45)</option>
+          <option value="date" ${((settings.program_settings || []).find(s => s.key === 'time_period_label') || {}).value === 'date' ? 'selected' : ''}>Date range (e.g. 02 – 08 Feb 2026)</option>
+        </select>
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="savePeriodLabel()">Save label</button><span class="small muted" id="plStatus"></span></div>
+      </div>` : ''}
+    ${settingsTab === 'tabs' ? `
+      <div class="panel" style="max-width:480px">
+        <h3>My tabs</h3>
+        <div class="small muted" style="margin-bottom:10px">Choose which views appear as main tabs (saved in this browser).</div>
+        ${ALL_VIEWS.map(v => `<label style="display:block;padding:5px 0"><input type="checkbox" ${getTabs().includes(v.id) ? 'checked' : ''} onchange="toggleTab('${v.id}', this.checked)"> ${v.icon} ${v.label}</label>`).join('')}
+      </div>` : ''}
+  `;
+}
+async function addPhase() {
+  const res = await api('/program/phases/add', 'POST', {
+    name: document.getElementById('newPhaseName').value,
+    start_date: document.getElementById('newPhaseStart').value,
+    end_date: document.getElementById('newPhaseEnd').value,
+  });
+  if (res.ok) render();
+}
+async function updPhase(id, name, start, end) {
+  const p = (await api('/program')).phases.find(x => x.id === id);
+  await api('/program/phases/update', 'POST', { id, name: name ?? p.name, start_date: start ?? p.start_date, end_date: end ?? p.end_date });
+}
+async function addProject() {
+  const res = await api('/program/projects/add', 'POST', {
+    name: document.getElementById('newPrjName').value,
+    program_phase_id: document.getElementById('newPrjPhase').value,
+    sap_phase: document.getElementById('newPrjSap').value,
+    start_date: document.getElementById('newPrjStart').value,
+    end_date: document.getElementById('newPrjEnd').value,
+    light: document.getElementById('newPrjLight').value,
+  });
+  if (res.ok) render();
+}
+async function updProjectType(id, type) {
+  const p = (await api('/program')).projects.find(x => x.id === id);
+  await api('/program/projects/update', 'POST', { id, name: p.name, program_phase_id: p.program_phase_id, sap_phase: p.sap_phase, start_date: p.start_date, end_date: p.end_date, status: p.status, light: p.light, project_type: type });
+  render();
+}
+async function updProject(id, name, phase, sap, start, end, status, light) {
+  const p = (await api('/program')).projects.find(x => x.id === id);
+  await api('/program/projects/update', 'POST', { id, name: name ?? p.name, program_phase_id: phase ?? p.program_phase_id,
+    sap_phase: sap ?? p.sap_phase, start_date: start ?? p.start_date, end_date: end ?? p.end_date, status: status ?? p.status, light: light ?? p.light });
+}
+async function saveRepo() {
+  await api('/program/docrepo', 'POST', {
+    provider: document.getElementById('repoProvider').value,
+    webhook_url: document.getElementById('repoWebhook').value,
+    enabled: document.getElementById('repoEnabled').checked,
+  });
+  document.getElementById('repoStatus').textContent = 'Saved.';
+}
+async function toggleModule(name, enabled) {
+  await api('/modules/toggle', 'POST', { name, enabled });
+  loadModules();
+}
+async function importXlsx(kind) {
+  const input = document.getElementById(kind === 'deliverables' ? 'impDeliv' : 'impDec');
+  const out = document.getElementById(kind === 'deliverables' ? 'impDelivResult' : 'impDecResult');
+  if (!input.files[0]) { out.textContent = 'Choose an .xlsx file first.'; out.style.color = 'var(--red)'; return; }
+  const buf = await input.files[0].arrayBuffer();
+  let bin = ''; const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  out.textContent = 'Uploading…'; out.style.color = 'var(--muted)';
+  const res = await api('/import', 'POST', { kind, file: btoa(bin) });
+  if (res.error) { out.textContent = 'Error: ' + res.error; out.style.color = 'var(--red)'; }
+  else { out.textContent = `Imported ${res.imported} rows from sheet "${res.sheet}" (${res.skipped} skipped).`; out.style.color = 'var(--green)'; }
+}
+async function addColumn() {
+  const label = prompt('New column name (e.g. "Waiting for vendor"):');
+  if (!label || !label.trim()) return;
+  await api('/kanban/columns/add', 'POST', { label: label.trim() });
+  render();
+}
+async function deleteColumn(id) {
+  if (!confirm('Delete this column? Cards in it move back to "Not started".')) return;
+  await api('/kanban/columns/delete', 'POST', { id });
+  render();
+}
+
+async function renderWbs() {
+  const [wbs, progs] = await Promise.all([api('/wbs'), api('/program')]);
+  const projName = Object.fromEntries(progs.projects.map(p => [p.id, p.name + ' (' + p.project_type + ')']));
+  const byProj = {};
+  wbs.forEach(w => (byProj[w.project_id] = byProj[w.project_id] || []).push(w));
+  const allDates = wbs.flatMap(w => [w.start_date, w.end_date]).filter(Boolean);
+  const min = allDates.sort()[0] || '2026-01-01';
+  const max = allDates.sort().reverse()[0] || '2027-12-31';
+  const span = (new Date(max) - new Date(min)) / 86400000 || 1;
+  const pct = d => Math.max(0, Math.min(100, (new Date(d) - new Date(min)) / 86400000 / span * 100));
+  const wdt = d => Math.max(1.5, (new Date(d) - new Date(min)) / 86400000 / span * 100);
+  const depth = w => w.parent_id ? (wbs.find(p => p.id === w.parent_id) ? 1 + depth(wbs.find(p => p.id === w.parent_id)) : 1) : 0;
+  app.innerHTML = `
+    <h2>WBS & Gantt</h2>
+    <div class="sub">Work breakdown structure per project — the bars below are the Gantt chart generated from the WBS</div>
+    ${Object.entries(byProj).map(([pid, items]) => `
+      <div class="panel" style="margin-bottom:16px">
+        <h3>${esc(projName[pid] || pid)} <span class="small muted">${esc(pid)}</span></h3>
+        <div style="margin-bottom:8px"><button class="btn ghost" onclick="wbsAdd('${pid}', '')">+ Add node</button></div>
+        ${items.sort((a, b) => a.code.localeCompare(b.code)).map(w => `
+          <div style="display:grid;grid-template-columns:${16 + depth(w) * 18}px 90px 1fr;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+            <div style="padding-left:${depth(w) * 18}px" class="small">${w.parent_id ? '└' : ''} ${esc(w.name)}</div>
+            <div class="small muted">${esc(w.code)}</div>
+            <div style="position:relative;height:16px;background:rgba(255,255,255,.06);border-radius:5px">
+              <div style="position:absolute;left:${pct(w.start_date)}%;width:${w.end_date ? wdt(w.end_date) : 2}%;top:0;height:100%;border-radius:5px;background:${w.parent_id ? 'linear-gradient(90deg,#6ea8ff,#cfa9ff)' : 'var(--purple)'}"></div>
+              <span class="small muted" style="position:absolute;left:${Math.min(pct(w.start_date) + (w.end_date ? wdt(w.end_date) : 2) + 1, 70)}%;top:0">${esc(w.start_date)} → ${esc(w.end_date)}</span>
+            </div>
+          </div>`).join('')}
+      </div>`).join('') || '<div class="panel muted">No WBS yet.</div>'}`;
+}
+async function wbsAdd(projectId, parentId) {
+  const name = prompt('Node name:'); if (!name) return;
+  const code = prompt('WBS code (e.g. 1.4):') || '';
+  const start = prompt('Start date (YYYY-MM-DD):') || '';
+  const end = prompt('End date (YYYY-MM-DD):') || '';
+  const res = await api('/wbs/add', 'POST', { project_id: projectId, parent_id: parentId, code, name, start_date: start, end_date: end });
+  if (res.ok) render();
+}
+
+
+const PLACEHOLDERS = {
+  invoicing: { title: 'Invoicing', desc: 'Placeholder module (app store). Planned: invoices per project, recurring T&M and fixed-fee schedules, bill on completion / milestone / date schedule — à la SuiteProjects billing. Not wired to financials yet.' },
+  bookkeeping: { title: 'Bookkeeping integration', desc: 'Placeholder module (app store). Planned: push invoices/entries to Fortnox, Visma eAccounting or similar via API + webhook; store credentials like task apps. Not wired yet.' },
+  projaccounting: { title: 'Project accounting', desc: 'Placeholder module (app store). Planned: link project activity (hours × rate, deliverable grades) to cost/revenue per project for budget-vs-actual and margin. Not wired yet.' },
+  consolidation: { title: 'Consolidation', desc: 'Placeholder module (app store). Planned: roll up multiple projects/subsidiaries into one program P&L and portfolio view, with currency handling. Not wired yet.' },
+};
+async function renderPlaceholder(key) {
+  const p = PLACEHOLDERS[key];
+  app.innerHTML = `
+    <h2>${p.title}</h2>
+    <div class="sub">Placeholder app — enable/disable in ☰ → App store</div>
+    <div class="panel" style="max-width:640px">
+      <p>${p.desc}</p>
+      <p class="muted small" style="margin-top:12px">This is a stub view. Data model hooks will land here when the module goes live.</p>
+    </div>`;
+}
+async function renderAllocation() {
+  const a = await api('/allocation');
+  const q = (document.getElementById('allocQ') ? document.getElementById('allocQ').value : (window._allocQ || '')).toLowerCase();
+  window._allocQ = q;
+  const users = a.users.filter(u => !q || (u.name + ' ' + u.username + ' ' + (u.skills || '')).toLowerCase().includes(q));
+  app.innerHTML = `
+    <h2>Resource allocation grid</h2>
+    <div class="sub">Skill search + people × projects. Search: <input id="allocQ" value="${esc(q)}" placeholder="skill or name…" oninput="window._allocQ=this.value;render()"></div>
+    <div class="panel" style="overflow-x:auto">
+      <table>
+        <tr><th>Person</th><th>Skills</th><th>Home project</th>${a.projects.map(p => `<th>${esc(p.id)}<div class="small muted">${esc(p.project_type)}</div></th>`).join('')}</tr>
+        ${users.map(u => `<tr>
+          <td><b>${esc(u.name)}</b><div class="small muted">${esc(u.username)} · ${esc(u.email)}</div></td>
+          <td class="small">${esc(u.skills || '—')}</td>
+          <td class="small">${esc(u.project_id || '—')}</td>
+          ${a.projects.map(p => `<td class="small">${(a.hours[u.name + '|' + p.id] || a.hours[u.username + '|' + p.id] || 0).toFixed(1)} h</td>`).join('')}
+        </tr>`).join('') || '<tr><td colspan="4" class="muted">No people match.</td></tr>'}
+      </table>
+    </div>`;
+}
+
+
+function openGateMenu(e, id) {
+  e.stopPropagation();
+  const m = document.getElementById('gm_' + id);
+  const wasOpen = m.style.display === 'block' && m.parentElement === document.body;
+  closeGateMenus();
+  if (!wasOpen) _floatMenu(m, e.currentTarget);
+}
+function closeGateMenus() { document.querySelectorAll('body > .rowmenu').forEach(m => m.style.display = 'none'); }
+function toast(msg, kind = 'ok') {
+  let t = document.getElementById('hubToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'hubToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2000;background:linear-gradient(165deg, rgba(52,62,92,.95), rgba(22,28,48,.97));border:1px solid var(--glass-border);border-radius:14px;padding:12px 20px;box-shadow:0 18px 50px rgba(0,0,0,.6), inset 0 1px 0 var(--glass-highlight);backdrop-filter:blur(30px);color:var(--text);font-size:13.5px;display:none';
+    t.innerHTML = '<b style="background:linear-gradient(90deg,#8ab8ff,#cfa9ff);-webkit-background-clip:text;background-clip:text;color:transparent">The Hub</b> <span id="hubToastMsg"></span>';
+    document.body.appendChild(t);
+  }
+  document.getElementById('hubToastMsg').textContent = msg;
+  t.style.borderColor = kind === 'err' ? 'rgba(255,125,120,.5)' : 'rgba(94,227,138,.5)';
+  t.style.display = 'block';
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => t.style.display = 'none', 3500);
+}
+async function deleteGate(id) {
+  if (!confirm(`Delete gate ${id}? Its conditions, MRF evidence, report cover AND all its deliverables are deleted.`)) return;
+  const res = await api('/gates/delete', 'POST', { id });
+  if (res.ok) { toast(`Deleted ${id}` + (res.deliverables_deleted ? ` — ${res.deliverables_deleted} deliverable(s) deleted too` : '')); render(); }
+  else toast(res.error || 'Delete failed', 'err');
+}
+async function deleteDeliverable(id) {
+  if (!confirm(`Delete deliverable ${id}? Its evidence, shares and time entries are removed.`)) return;
+  const res = await api('/deliverables/delete', 'POST', { id });
+  if (res.ok) { toast(`Deleted ${id}`); render(); }
+  else toast(res.error || 'Delete failed', 'err');
+}
+
+
+async function renderMistralSettings() {
+  const cfg = await api('/mistral');
+  return `
+      <div class="panel" style="max-width:560px">
+        <h3>Mistral connection</h3>
+        <div class="small muted" style="margin-bottom:12px">Connect the Hub to Mistral AI. The API key is stored locally in the Hub DB only. Agents from ☰ → AI agents run here with their grounding contract as the system prompt.</div>
+        <label class="small muted"><input type="checkbox" id="mEn" ${cfg.enabled ? 'checked' : ''} onchange="saveMistral()"> Enabled</label>
+        <label class="small muted" style="display:block;margin-top:10px">API key</label>
+        <input id="mKey" type="password" style="width:100%" placeholder="${esc(cfg.api_key || 'paste key…')}" onblur="saveMistral()">
+        <label class="small muted" style="display:block;margin-top:10px">Model</label>
+        <select id="mModel" style="width:100%" onchange="saveMistral()">
+          ${['mistral-large-latest','mistral-small-latest','codestral-latest','mistral-medium-latest'].map(m => `<option ${m === cfg.model ? 'selected' : ''}>${m}</option>`).join('')}
+        </select>
+        <label class="small muted" style="display:block;margin-top:10px">Base URL</label>
+        <input id="mUrl" style="width:100%" value="${esc(cfg.base_url)}" onblur="saveMistral()">
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <button class="btn ghost" onclick="testMistral()">Test connection</button>
+          <span id="mStatus" class="small"></span>
+        </div>
+      </div>`;
+}
+async function saveMistral() {
+  await api('/mistral/save', 'POST', {
+    enabled: document.getElementById('mEn').checked,
+    api_key: document.getElementById('mKey').value,
+    model: document.getElementById('mModel').value,
+    base_url: document.getElementById('mUrl').value,
+  });
+  document.getElementById('mStatus').textContent = 'Saved.';
+}
+async function testMistral() {
+  await saveMistral();
+  const out = document.getElementById('mStatus');
+  out.textContent = 'Testing…'; out.style.color = 'var(--muted)';
+  const res = await api('/mistral/test', 'POST', {});
+  if (res.ok) { out.textContent = `OK — ${res.model} replied: ${res.reply}`; out.style.color = 'var(--green)'; }
+  else { out.textContent = 'Failed: ' + (res.error || 'unknown'); out.style.color = 'var(--red)'; }
+}
+async function runAgent(name) {
+  const prompt = prompt(`Prompt for agent "${name}"`, 'Summarize current program status and top risks.');
+  if (prompt === null) return;
+  const res = await api('/agents/run', 'POST', { name, prompt });
+  if (res.ok) {
+    document.getElementById('modal').innerHTML = `
+      <h3>✦ ${esc(res.agent)} (via ${esc(res.model)})</h3>
+      <div style="white-space:pre-wrap;font-size:13.5px;line-height:1.6">${esc(res.reply)}</div>
+      <div class="row"><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+    document.getElementById('modalBg').classList.add('open');
+  } else alert(res.error || 'Run failed');
+}
+
+async function gradeDel(id, grade) { await api('/deliverables/grade', 'POST', { id, grade }); }
+async function assignDel(id, field, value) { await api('/deliverables/assign', 'POST', { id, [field]: value }); }
+async function customizeReport(gateId) {
+  const g = await api('/gates/' + gateId + '/report');
+  const rc = g.report_config || {};
+  document.getElementById('modal').innerHTML = `
+    <h3>Customize report cover — ${esc(gateId)}</h3>
+    <label>Front page title</label><input id="rcTitle" value="${esc(rc.front_title || '')}" placeholder="${esc(g.id + ' — ' + g.name)}">
+    <label>Description of the gate</label><textarea id="rcDesc" rows="4" style="width:100%" placeholder="What this gate decides, entry/exit summary…">${esc(rc.front_description || '')}</textarea>
+    <label>Logo (image file)</label><input type="file" id="rcLogo" accept="image/*">
+    ${rc.logo ? `<div class="small muted" style="margin-top:4px">Current: <img src="${rc.logo}" style="max-height:40px;vertical-align:middle"> ${esc(rc.logo_name || '')}</div>` : ''}
+    <div class="row">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn ghost" onclick="window.open('/report/${gateId}','_blank')">Preview</button>
+      <button class="btn" onclick="saveReportCover('${gateId}')">Save cover</button>
+    </div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+async function saveReportCover(gateId) {
+  let logo = '', logoName = '';
+  const f = document.getElementById('rcLogo').files[0];
+  if (f) {
+    logo = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
+    logoName = f.name;
+  }
+  const cur = await api('/gates/' + gateId + '/report');
+  const rc = cur.report_config || {};
+  const res = await api('/gates/report/save', 'POST', {
+    gate_id: gateId,
+    logo: logo || rc.logo || '',
+    logo_name: logoName || rc.logo_name || '',
+    front_title: document.getElementById('rcTitle').value,
+    front_description: document.getElementById('rcDesc').value,
+  });
+  if (res.ok) { closeModal(); alert('Report cover saved. Open the report to see it.'); }
+  else alert('Save failed: ' + (res.error || 'unknown'));
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
+document.getElementById('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
+buildNav(); buildMenu(); loadModules().then(render);
+</script>
+</body>
+</html>
