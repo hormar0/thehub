@@ -1326,19 +1326,19 @@ async function renderTimeReport() {
         </tr>
       </table>
     </div>
-    document.querySelectorAll('.tsinp').forEach(inp => {
-      const v = cellMin[inp.dataset.pid + '|' + inp.dataset.day];
-      if (v) inp.value = fmt(v);
-      inp.addEventListener('focus', () => inp.select());
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tsSaveCell(inp); } });
-      inp.addEventListener('change', () => tsSaveCell(inp));
-    });
     <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
       <button class="btn ghost" onclick="tsAddRow()">+ Add row</button>
       <button class="btn ghost" onclick="tsSave('draft')">Save</button>
       <button class="btn" onclick="tsSave('submitted')">Submit week for approval</button>
       <span class="small muted">Status: <b>${esc(status)}</b></span>
     </div>`;
+  document.querySelectorAll('.tsinp').forEach(inp => {
+    const v = cellMin[inp.dataset.pid + '|' + inp.dataset.day];
+    if (v) inp.value = fmt(v);
+    inp.addEventListener('focus', () => inp.select());
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tsSaveCell(inp); } });
+    inp.addEventListener('change', () => tsSaveCell(inp));
+  });
 }
 function tsMonday() {
   const now = new Date();
