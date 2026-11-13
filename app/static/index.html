@@ -427,7 +427,7 @@ async function renderDashboard() {
     </div>
     <div class="panel" style="margin-bottom:16px">
       <h3>Projects
-        <select id="projSort" onchange="window._psort=this.value;render()" style="margin-left:10px">
+        <select id="projSort" onchange="window._psort=this.value;render()" style="margin-left:10px;font-size:12px;padding:3px 6px;width:auto">
           <option value="type" ${(window._psort||'type')==='type'?'selected':''}>Sort: type</option>
           <option value="rag" ${(window._psort||'')==='rag'?'selected':''}>Sort: RAG status</option>
           <option value="name" ${(window._psort||'')==='name'?'selected':''}>Sort: name</option>
@@ -552,16 +552,20 @@ async function renderOrgChart(pid) {
   const mine = org.filter(o => o.project_id === pid);
   const streams = ws.map(w => w.name);
   const box = document.getElementById('orgChart');
-  const W = 760, H = 460;
+  const W = 900, H = 520;
   // default layout: PM top-center, staff boxes on sides, streams along the bottom
   const pm = mine.find(o => o.role === 'pm') || mine[0];
   const staff = mine.filter(o => o.role === 'staff');
   const streamers = mine.filter(o => o.role !== 'pm' && o.role !== 'staff');
+  const BW = 150, BH = 56, GX = 24, GY = 46;
+  const cols = Math.max(2, Math.min(5, streamers.length || 2));
   const layout = o => {
     if (o.x || o.y) return [o.x, o.y];
-    if (o.role === 'pm' || o === pm && !o.role) return [W / 2 - 70, 12];
-    if (o.role === 'staff') { const i = staff.indexOf(o); return [i % 2 === 0 ? 20 : W - 160, 110 + Math.floor(i / 2) * 90]; }
-    const i = streamers.indexOf(o); return [20 + (i % 4) * 185, H - 90 - Math.floor(i / 4) * 90];
+    if (o.role === 'pm' || (o === pm && !o.role)) return [W / 2 - BW / 2, 14];
+    if (o.role === 'staff') { const i = staff.indexOf(o); const side = i % 2, row = Math.floor(i / 2); return [side === 0 ? 30 : W - 30 - BW, 14 + BH + GY + row * (BH + GY)]; }
+    const i = streamers.indexOf(o); const row = Math.floor(i / cols), col = i % cols;
+    const totalW = cols * BW + (cols - 1) * GX;
+    return [Math.max(16, (W - totalW) / 2 + col * (BW + GX)), H - 16 - BH - row * (BH + GY)];
   };
   box.innerHTML = `
     <div id="orgCanvas" style="position:relative;width:${W}px;height:${H}px;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:12px;overflow:auto;touch-action:none">
@@ -569,7 +573,7 @@ async function renderOrgChart(pid) {
       ${mine.map(o => {
         const u = users.find(x => x.username === o.username);
         const [x, y] = layout(o);
-        return `<div class="orgbox" data-user="${esc(o.username)}" data-role="${esc(o.role)}" style="position:absolute;left:${x}px;top:${y}px;width:140px;padding:8px 10px;border-radius:10px;background:linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.05));border:1px solid ${o.role === 'pm' ? 'rgba(207,169,255,.7)' : o.role === 'staff' ? 'rgba(110,168,255,.6)' : 'rgba(94,227,138,.5)'};cursor:grab;touch-action:none">
+        return `<div class="orgbox" data-user="${esc(o.username)}" data-role="${esc(o.role)}" style="position:absolute;left:${x}px;top:${y}px;width:150px;padding:8px 10px;border-radius:10px;background:linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.05));border:1px solid ${o.role === 'pm' ? 'rgba(207,169,255,.7)' : o.role === 'staff' ? 'rgba(110,168,255,.6)' : 'rgba(94,227,138,.5)'};cursor:grab;touch-action:none">
           <b>${esc(u ? u.name : o.username)}</b><div class="small muted">${esc(o.role === 'pm' ? 'Project Manager' : o.role === 'staff' ? 'Staff function' : o.stream)}</div>
         </div>`;
       }).join('')}
@@ -605,7 +609,7 @@ async function renderOrgChart(pid) {
       const ox = bx.offsetLeft, oy = bx.offsetTop, sx = pt.clientX, sy = pt.clientY;
       const move = ev => {
         const p = ev.touches ? ev.touches[0] : ev;
-        bx.style.left = Math.max(0, Math.min(W - 140, ox + p.clientX - sx)) + 'px';
+        bx.style.left = Math.max(0, Math.min(W - 150, ox + p.clientX - sx)) + 'px';
         bx.style.top = Math.max(0, Math.min(H - 50, oy + p.clientY - sy)) + 'px';
         draw();
       };
