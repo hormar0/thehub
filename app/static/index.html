@@ -1256,7 +1256,10 @@ async function renderTimeReport() {
   const t = await api('/timereport');
   const progs = await api('/program');
   const setts = await api('/settings');
-  const budget = parseFloat((setts.program_settings || []).find(s => s.key === 'time_budget_hours')?.value || 0) || 0;
+  const budget = parseFloat((setts.program_settings || []).find(s => s.key === 'time_budget_monthly_hours')?.value || 0) || 0;
+  const monthPrefix = new Date().toISOString().slice(0, 7);
+  let monthMin = 0;
+  t.entries.forEach(e => { if ((e.day || e.week || '').startsWith(monthPrefix) && e.owner === owner) monthMin += e.hours * 60; });
   const owner = window._tsOwner || window._chatUser || 'A. Reinhart';
   const view = window._tsView || 'week';
   const now = new Date();
@@ -1283,8 +1286,8 @@ async function renderTimeReport() {
       <div class="card"><div class="kpi">${fmt(grand)}</div><div class="lbl">This week (${esc(owner)})</div></div>
       <div class="card"><div class="kpi">${fmt(Object.values(t.by_owner).reduce((s, o) => s + o.hours * 60, 0))}</div><div class="lbl">All time — all users</div></div>
       <div class="card"><div class="kpi">${Object.keys(t.by_project).length}</div><div class="lbl">Projects with hours</div></div>
-      <div class="card"><div class="kpi">${budget ? budget + ' h' : '—'}</div><div class="lbl">Weekly budget (Settings → Time reporting)</div></div>
-      ${budget ? `<div class="card"><div class="kpi">${fmt(grand) } / ${budget} h</div><div class="lbl">Budget usage this week</div></div>` : ''}
+      <div class="card"><div class="kpi">${budget ? budget + ' h' : '—'}</div><div class="lbl">Monthly budget (Settings → Time reporting)</div></div>
+      ${budget ? `<div class="card"><div class="kpi">${fmt(monthMin)} / ${budget} h</div><div class="lbl">Budget usage this month</div></div>` : ''}
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
       ${['Timesheet', 'Pending approval', 'Unsubmitted', 'Approved'].map((s, i) => `<button class="btn ${i === 0 ? '' : 'ghost'}">${s}${s === 'Pending approval' ? ` (${pending})` : ''}</button>`).join('')}
@@ -1662,8 +1665,8 @@ async function renderSettings() {
     ${settingsTab === 'time' ? `
       <div class="panel" style="max-width:480px">
         <h3>Time reporting</h3>
-        <label>Weekly budget (hours per user)</label>
-        <input id="budgetHours" type="number" step="0.5" min="0" value="${esc(((settings.program_settings || []).find(s => s.key === 'time_budget_hours') || {}).value || '')}" style="width:120px">
+        <label>Monthly budget (hours per user)</label>
+        <input id="budgetHours" type="number" step="0.5" min="0" value="${esc(((settings.program_settings || []).find(s => s.key === 'time_budget_monthly_hours') || {}).value || '')}" style="width:120px">
         <div class="row" style="margin-top:8px"><button class="btn" onclick="saveBudget()">Save budget</button><span class="small muted" id="budgetStatus"></span></div>
       </div>` : ''}
     ${settingsTab === 'tabs' ? `
