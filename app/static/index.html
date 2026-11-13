@@ -1298,6 +1298,7 @@ async function renderTimeReport() {
   const wstatus = (t.week_status || []).find(w => w.owner === owner && w.week === weekStart);
   const status = wstatus ? wstatus.status : 'draft';
   const pending = (t.week_status || []).filter(w => w.status === 'submitted').length;
+  const periodLabel = ((setts.program_settings || []).find(s => s.key === 'time_period_label') || {}).value || 'week';
   app.innerHTML = `
     <h2>Time</h2>
     <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">
@@ -1311,7 +1312,9 @@ async function renderTimeReport() {
       ${['Timesheet', 'Pending approval', 'Unsubmitted', 'Approved'].map((s, i) => `<button class="btn ${i === 0 ? '' : 'ghost'}">${s}${s === 'Pending approval' ? ` (${pending})` : ''}</button>`).join('')}
       <span style="flex:1"></span>
       <button class="btn ghost" onclick="window._tsWeekOff=(${(window._tsWeekOff || 0)} - 1);render()">←</button>
-      <span class="small">This week: ${days[0].toLocaleDateString('en-GB', { day: '2-digit' })} – ${days[6].toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+      <span class="small">${periodLabel === 'date'
+        ? `This week: ${days[0].toLocaleDateString('en-GB', { day: '2-digit' })} – ${days[6].toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`
+        : `Week ${isoWeek(days[0])} (${days[0].toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} – ${days[6].toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})`}</span>
       <button class="btn ghost" onclick="window._tsWeekOff=(${(window._tsWeekOff || 0)} + 1);render()">→</button>
       <select onchange="window._tsView=this.value;render()">
         <option value="day" ${view === 'day' ? 'selected' : ''}>Day</option>
@@ -1356,6 +1359,13 @@ async function renderTimeReport() {
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tsSaveCell(inp); } });
     inp.addEventListener('change', () => tsSaveCell(inp));
   });
+}
+function isoWeek(d) {
+  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = x.getUTCDay() || 7;
+  x.setUTCDate(x.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
+  return Math.ceil((((x - yearStart) / 86400000) + 1) / 7);
 }
 function tsMonday() {
   const now = new Date();
@@ -1686,6 +1696,12 @@ async function renderSettings() {
         <label>Monthly budget (hours per user)</label>
         <input id="budgetHours" type="number" step="0.5" min="0" value="${esc(((settings.program_settings || []).find(s => s.key === 'time_budget_monthly_hours') || {}).value || '')}" style="width:120px">
         <div class="row" style="margin-top:8px"><button class="btn" onclick="saveBudget()">Save budget</button><span class="small muted" id="budgetStatus"></span></div>
+        <label style="margin-top:14px;display:block">Period label on timesheet</label>
+        <select id="periodLabel" style="width:200px">
+          <option value="week" ${((settings.program_settings || []).find(s => s.key === 'time_period_label') || {}).value !== 'date' ? 'selected' : ''}>Week number (e.g. Week 45)</option>
+          <option value="date" ${((settings.program_settings || []).find(s => s.key === 'time_period_label') || {}).value === 'date' ? 'selected' : ''}>Date range (e.g. 02 – 08 Feb 2026)</option>
+        </select>
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="savePeriodLabel()">Save label</button><span class="small muted" id="plStatus"></span></div>
       </div>` : ''}
     ${settingsTab === 'tabs' ? `
       <div class="panel" style="max-width:480px">
