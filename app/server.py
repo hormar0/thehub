@@ -104,8 +104,8 @@ def init_db():
             continue
         s0 = date.fromisoformat(p["start_date"]); e0 = date.fromisoformat(p["end_date"])
         total = max(1, (e0 - s0).days)
-        for i, ph in enumerate(["Discover", "Prepare", "Explore", "Realize", "Deploy", "Run"]):
-            a = s0 + _td(days=round(total * i / 6)); b = s0 + _td(days=round(total * (i + 1) / 6) - 1)
+        for i, ph in enumerate(["Discover", "Prepare", "Explore", "Realize", "Deploy", "Run", "Closed"]):
+            a = s0 + _td(days=round(total * i / 7)); b = s0 + _td(days=round(total * (i + 1) / 7) - 1)
             db.execute("INSERT OR IGNORE INTO project_sap_phases VALUES (?,?,?,?)", (p["id"], ph, a.isoformat(), b.isoformat()))
     db.commit()
     db.commit()
