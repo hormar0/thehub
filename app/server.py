@@ -2,6 +2,7 @@
 import base64
 import io
 import json
+import uuid
 import os
 import re
 import sqlite3
@@ -45,6 +46,7 @@ def init_db():
         db.execute("ALTER TABLE project_org ADD COLUMN role TEXT NOT NULL DEFAULT 'stream'")
         db.execute("ALTER TABLE project_org ADD COLUMN x REAL NOT NULL DEFAULT 0")
         db.execute("ALTER TABLE project_org ADD COLUMN y REAL NOT NULL DEFAULT 0")
+    db.execute("CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '')")
     db.execute("CREATE TABLE IF NOT EXISTS week_status (owner TEXT NOT NULL, week TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft', PRIMARY KEY (owner, week))")
     # per-day time entries: add day column on existing DBs before seeding
     tcols = [r[1] for r in db.execute("PRAGMA table_info(time_entries)")]
@@ -685,6 +687,8 @@ class Handler(BaseHTTPRequestHandler):
                 dels = rows(db.execute("SELECT id, title, owner, gate_id, state, due_date, dependency_ids, priority, tags, planned_hours, project_id, dtype FROM deliverables ORDER BY due_date"))
                 gates = rows(db.execute("SELECT id, name, scheduled_date, status FROM gates ORDER BY scheduled_date"))
                 return self._send(200, {"deliverables": dels, "gates": gates})
+            if path == "/api/settings":
+                return self._send(200, {"program_settings": [dict(r) for r in db.execute("SELECT key, value FROM app_settings")]})
             if path == "/api/program":
                 phases = rows(db.execute("SELECT * FROM program_phases ORDER BY position"))
                 projects = rows(db.execute("SELECT p.*, ph.name AS phase_name FROM projects p LEFT JOIN program_phases ph ON ph.id = p.program_phase_id ORDER BY p.start_date"))
@@ -729,6 +733,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, rows(db.execute("SELECT * FROM project_org")))
             if path == "/api/sapphases":
                 return self._send(200, rows(db.execute("SELECT * FROM project_sap_phases ORDER BY project_id, start_date")))
+            if path == "/api/expenses":
+                return self._send(200, rows(db.execute("SELECT * FROM expenses ORDER BY date DESC")))
             if path == "/api/wbs":
                 return self._send(200, rows(db.execute("SELECT * FROM wbs ORDER BY project_id, code")))
             if path == "/api/reportmode":
@@ -845,6 +851,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True})
             if path == "/api/org/remove":
                 db.execute("DELETE FROM project_org WHERE project_id=? AND username=?", (body.get("project_id"), body.get("username")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/settings/set":
+                db.execute("INSERT INTO app_settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (body.get("key"), body.get("value", "")))
+                db.commit()
+                return self._send(200, {"ok": True})
+            if path == "/api/expenses/add":
+                eid = "EXP-" + uuid.uuid4().hex[:6].upper()
+                db.execute("INSERT INTO expenses VALUES (?,?,?,?,?,?,?,?)",
+                           (eid, body.get("owner"), body.get("date"), body.get("project_id", ""), body.get("category", "other"), float(body.get("amount", 0)), body.get("currency", "EUR"), body.get("description", "")))
+                db.commit()
+                return self._send(200, {"ok": True, "id": eid})
+            if path == "/api/expenses/delete":
+                db.execute("DELETE FROM expenses WHERE id=?", (body.get("id"),))
                 db.commit()
                 return self._send(200, {"ok": True})
             if path == "/api/timereport/delete":

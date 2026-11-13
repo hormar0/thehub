@@ -309,7 +309,7 @@ document.addEventListener('click', e => {
 function buildMenu() {
   const sections = [
     ['Program', [['settings', 'Settings'], ['tabs', 'My tabs']]],
-    ['Work', [['work', 'Work (Register / Kanban)'], ['more:ledger', 'Decisions & Conditions']]],
+    ['Work', [['work', 'Work (Register / Kanban)'], ['more:ledger', 'Decisions & Conditions'], ['expenses', 'Expenses'], ['more:timereport', 'Time Report']]],
     ['Planning', [['planning', 'Planning (Gantt / Calendar / WBS)']]],
     ['Insights', [['readiness', 'Readiness (MRF)'], ['more:briefing', 'Briefing Pack'], ['more:agents', 'AI Agents'], ['more:allocation', 'Allocation grid'], ['more:invoicing', 'Invoicing'], ['more:bookkeeping', 'Bookkeeping'], ['more:projaccounting', 'Proj. Accounting'], ['more:consolidation', 'Consolidation'], ['more:timereport', 'Time Report']]],
   ];
@@ -336,6 +336,7 @@ document.querySelectorAll('.menu-item').forEach(b => b.addEventListener('click',
   else if (b.id === 'menuUsers') settingsTab = 'users';
   else if (b.id === 'menuMistral') settingsTab = 'mistral';
   else if (b.id === 'menuTabs') settingsTab = 'tabs';
+  else if (b.id === 'menuTime') settingsTab = 'time';
   else settingsTab = 'store';
   currentView = 'settings'; render();
 }));
@@ -347,6 +348,7 @@ async function render() {
   if (currentView === 'project') return renderProject();
   if (currentView === 'risks') { subView = 'raid'; currentView = 'more'; return render(); }
   if (currentView === 'time') { app = document.getElementById('app'); return renderTimeReport(); }
+  if (currentView === 'expenses') return renderExpenses();
   if (currentView === 'gates') return renderGates();
   if (currentView === 'readiness') return renderReadiness();
   if (currentView === 'settings') return renderSettings();
@@ -1180,9 +1182,81 @@ async function logDay(day, projectId) {
   if (res.ok) { toast('Logged ' + hours + ' h on ' + projectId + ' (' + day + ')'); render(); }
   else toast(res.error || 'Error', 'err');
 }
+async function renderExpenses() {
+  const [ex, progs] = await Promise.all([api('/expenses'), api('/program')]);
+  const projs = progs.projects;
+  const total = ex.reduce((s, e) => s + e.amount, 0);
+  const byCat = {};
+  ex.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+  app.innerHTML = `
+    <h2>Expenses</h2>
+    <div class="sub">Separate from time — attach the report as an appendix to invoices.</div>
+    <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">
+      <div class="card"><div class="kpi">${ex.length}</div><div class="lbl">Entries</div></div>
+      <div class="card"><div class="kpi">${total.toFixed(2)} €</div><div class="lbl">Total</div></div>
+      ${Object.entries(byCat).map(([c, v]) => `<div class="card"><div class="kpi">${v.toFixed(2)} €</div><div class="lbl">${esc(c)}</div></div>`).join('')}
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+      <h3>Add expense</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <span><label class="small muted">Date</label><input type="date" id="exDate" style="width:150px"></span>
+        <span><label class="small muted">Project</label><select id="exProj" style="width:180px">${projs.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></span>
+        <span><label class="small muted">Category</label><select id="exCat" style="width:140px">${['travel','meals','hotel','software','other'].map(c => `<option>${c}</option>`).join('')}</select></span>
+        <span><label class="small muted">Amount</label><input id="exAmt" inputmode="decimal" placeholder="0.00" style="width:90px"></span>
+        <span><label class="small muted">Currency</label><input id="exCur" value="EUR" style="width:60px"></span>
+        <span><label class="small muted">Description</label><input id="exDesc" style="width:220px"></span>
+        <button class="btn" onclick="addExpense()">Add</button>
+        <button class="btn ghost" onclick="expenseReport()">📄 Expense report (invoice appendix)</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Entries</h3>
+      <table><tr><th>ID</th><th>Date</th><th>Project</th><th>Category</th><th>Description</th><th>Amount</th><th></th></tr>
+      ${ex.map(e => `<tr><td class="small">${esc(e.id)}</td><td class="small">${esc(e.date)}</td><td class="small">${esc((projs.find(p => p.id === e.project_id) || {}).name || e.project_id)}</td><td>${esc(e.category)}</td><td>${esc(e.description)}</td><td>${e.amount.toFixed(2)} ${esc(e.currency)}</td><td><button class="kb-del" onclick="delExpense('${e.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="7" class="muted">No expenses yet.</td></tr>'}
+      </table>
+    </div>`;
+}
+async function addExpense() {
+  const res = await api('/expenses/add', 'POST', {
+    owner: window._tsOwner || window._chatUser || 'A. Reinhart',
+    date: document.getElementById('exDate').value || new Date().toISOString().slice(0, 10),
+    project_id: document.getElementById('exProj').value,
+    category: document.getElementById('exCat').value,
+    amount: parseFloat(document.getElementById('exAmt').value || '0'),
+    currency: document.getElementById('exCur').value,
+    description: document.getElementById('exDesc').value
+  });
+  if (res.ok) { toast('Expense ' + res.id + ' added'); render(); } else toast(res.error || 'Error', 'err');
+}
+async function delExpense(id) {
+  await api('/expenses/delete', 'POST', { id });
+  render();
+}
+async function expenseReport() {
+  const ex = await api('/expenses');
+  const progs = await api('/program');
+  const total = ex.reduce((s, e) => s + e.amount, 0);
+  const byProj = {};
+  ex.forEach(e => { const k = e.project_id || '(none)'; (byProj[k] = byProj[k] || []).push(e); });
+  document.getElementById('modal').innerHTML = `
+    <h3>Expense report — invoice appendix</h3>
+    <div class="small muted">Generated ${new Date().toISOString().slice(0, 10)} · ${ex.length} entries · total ${total.toFixed(2)} EUR</div>
+    ${Object.entries(byProj).map(([pid, items]) => {
+      const p = progs.projects.find(x => x.id === pid);
+      const sub = items.reduce((s, e) => s + e.amount, 0);
+      return `<h4 style="margin-top:12px">${esc(p ? p.name : pid)} — ${sub.toFixed(2)} EUR</h4>
+      <table><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th></tr>
+      ${items.map(e => `<tr><td class="small">${esc(e.date)}</td><td>${esc(e.category)}</td><td>${esc(e.description)}</td><td>${e.amount.toFixed(2)} ${esc(e.currency)}</td></tr>`).join('')}</table>`;
+    }).join('')}
+    <div class="row" style="margin-top:12px"><button class="btn" onclick="window.print()">Print / Save PDF</button><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+  document.getElementById('modalBg').classList.add('open');
+}
+
 async function renderTimeReport() {
   const t = await api('/timereport');
   const progs = await api('/program');
+  const setts = await api('/settings');
+  const budget = parseFloat((setts.program_settings || []).find(s => s.key === 'time_budget_hours')?.value || 0) || 0;
   const owner = window._tsOwner || window._chatUser || 'A. Reinhart';
   const view = window._tsView || 'week';
   const now = new Date();
@@ -1205,6 +1279,13 @@ async function renderTimeReport() {
   const pending = (t.week_status || []).filter(w => w.status === 'submitted').length;
   app.innerHTML = `
     <h2>Time</h2>
+    <div class="grid cards" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px">
+      <div class="card"><div class="kpi">${fmt(grand)}</div><div class="lbl">This week (${esc(owner)})</div></div>
+      <div class="card"><div class="kpi">${fmt(Object.values(t.by_owner).reduce((s, o) => s + o.hours * 60, 0))}</div><div class="lbl">All time — all users</div></div>
+      <div class="card"><div class="kpi">${Object.keys(t.by_project).length}</div><div class="lbl">Projects with hours</div></div>
+      <div class="card"><div class="kpi">${budget ? budget + ' h' : '—'}</div><div class="lbl">Weekly budget (Settings → Time reporting)</div></div>
+      ${budget ? `<div class="card"><div class="kpi">${fmt(grand) } / ${budget} h</div><div class="lbl">Budget usage this week</div></div>` : ''}
+    </div>
     <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
       ${['Timesheet', 'Pending approval', 'Unsubmitted', 'Approved'].map((s, i) => `<button class="btn ${i === 0 ? '' : 'ghost'}">${s}${s === 'Pending approval' ? ` (${pending})` : ''}</button>`).join('')}
       <span style="flex:1"></span>
@@ -1471,11 +1552,12 @@ async function syncErrors() {
   render();
 }
 const SETTINGS_TABS = [
-  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['users', 'Users'], ['mistral', 'Mistral'], ['tabs', 'My tabs'],
+  ['store', 'App store'], ['import', 'Excel import'], ['program', 'Program & projects'], ['repo', 'Document repository'], ['agents', 'AI agents'], ['users', 'Users'], ['mistral', 'Mistral'], ['tabs', 'My tabs'], ['time', 'Time reporting'],
 ];
 async function renderSettings() {
   const mods = await api('/modules');
   const prog = await api('/program');
+  const settings = await api('/settings');
   const agentsPanel = settingsTab === 'agents' ? await renderAgentsSettings() : '';
   const taskappsPanel = settingsTab === 'store' ? await renderTaskAppsSettings() : '';
   const usersPanel = settingsTab === 'users' ? await renderUsersSettings(prog.projects) : '';
@@ -1577,6 +1659,13 @@ async function renderSettings() {
     ${settingsTab === 'agents' ? agentsPanel : ''}
     ${settingsTab === 'users' ? usersPanel : ''}
     ${settingsTab === 'mistral' ? mistralPanel : ''}
+    ${settingsTab === 'time' ? `
+      <div class="panel" style="max-width:480px">
+        <h3>Time reporting</h3>
+        <label>Weekly budget (hours per user)</label>
+        <input id="budgetHours" type="number" step="0.5" min="0" value="${esc(((settings.program_settings || []).find(s => s.key === 'time_budget_hours') || {}).value || '')}" style="width:120px">
+        <div class="row" style="margin-top:8px"><button class="btn" onclick="saveBudget()">Save budget</button><span class="small muted" id="budgetStatus"></span></div>
+      </div>` : ''}
     ${settingsTab === 'tabs' ? `
       <div class="panel" style="max-width:480px">
         <h3>My tabs</h3>
